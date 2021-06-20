@@ -1,7 +1,8 @@
 FROM node:lts-stretch
 WORKDIR /app
 ADD . .
-RUN yarn ; yarn build
+RUN yarn \
+    yarn build
 
 FROM nginx:stable
 WORKDIR /app
