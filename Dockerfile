@@ -1,4 +1,4 @@
-FROM node:lts-stretch
+FROM node:lts-alpine
 WORKDIR /app
 ADD . .
 RUN yarn
