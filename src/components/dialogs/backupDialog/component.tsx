@@ -1,19 +1,18 @@
-//备份和恢复页面
 import React from "react";
 import "./backupDialog.css";
 import { driveList } from "../../../constants/driveList";
-import BackupUtil from "../../../utils/syncUtils/backupUtil";
-import RestoreUtil from "../../../utils/syncUtils/restoreUtil";
+import { backup } from "../../../utils/syncUtils/backupUtil";
+import { restore } from "../../../utils/syncUtils/restoreUtil";
 import { Trans } from "react-i18next";
 import DropboxUtil from "../../../utils/syncUtils/dropbox";
 import WebdavUtil from "../../../utils/syncUtils/webdav";
 import { BackupDialogProps, BackupDialogState } from "./interface";
 import TokenDialog from "../tokenDialog";
-import OtherUtil from "../../../utils/otherUtil";
-import { isElectron } from "react-device-detect";
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import Lottie from "react-lottie";
 import animationSuccess from "../../../assets/lotties/success.json";
-
+import FileSaver from "file-saver";
+import toast from "react-hot-toast";
 const successOptions = {
   loop: false,
   autoplay: true,
@@ -41,31 +40,46 @@ class BackupDialog extends React.Component<
   handleFinish = () => {
     this.setState({ currentStep: 2 });
     this.props.handleLoadingDialog(false);
-    this.showMessage("Sync Successfully");
+    this.showMessage("Excute Successfully");
+    this.props.handleFetchBooks();
   };
-  handleRestoreToLocal = (event: any) => {
+  handleRestoreToLocal = async (event: any) => {
     event.preventDefault();
-    RestoreUtil.restore(event.target.files[0], this.handleFinish);
+    this.props.handleLoadingDialog(true);
+    let result = await restore(event.target.files[0]);
+    if (result) {
+      this.handleFinish();
+    }
   };
   showMessage = (message: string) => {
-    this.props.handleMessage(message);
-    this.props.handleMessageBox(true);
+    toast(this.props.t(message));
   };
   handleDrive = (index: number) => {
-    this.setState({ currentDrive: index }, () => {
+    let year = new Date().getFullYear(),
+      month = new Date().getMonth() + 1,
+      day = new Date().getDate();
+    this.setState({ currentDrive: index }, async () => {
       switch (index) {
         case 0:
-          BackupUtil.backup(
+          let blob: Blob | boolean = await backup(
             this.props.books,
             this.props.notes,
             this.props.bookmarks,
-            this.handleFinish,
-            0,
-            this.showMessage
+            false
           );
+          if (!blob) {
+            this.showMessage("Backup Failed");
+          }
+          FileSaver.saveAs(
+            blob as Blob,
+            `${year}-${month <= 9 ? "0" + month : month}-${
+              day <= 9 ? "0" + day : day
+            }.zip`
+          );
+          this.handleFinish();
           break;
         case 1:
-          if (!OtherUtil.getReaderConfig("dropbox_token")) {
+          if (!StorageUtil.getReaderConfig("dropbox_token")) {
             this.props.handleTokenDialog(true);
             break;
           }
@@ -74,18 +88,32 @@ class BackupDialog extends React.Component<
             this.showMessage("Uploading");
             this.props.handleLoadingDialog(true);
 
-            BackupUtil.backup(
+            let blob: Blob | boolean = await backup(
               this.props.books,
               this.props.notes,
               this.props.bookmarks,
-              this.handleFinish,
-              1,
-              this.showMessage
+              false
             );
+            if (!blob) {
+              this.showMessage("Backup Failed");
+              this.props.handleLoadingDialog(false);
+            }
+            let result = await DropboxUtil.UploadFile(blob);
+            if (result) {
+              this.handleFinish();
+            } else {
+              this.showMessage("Upload failed, check your connection");
+            }
           } else {
             this.props.handleLoadingDialog(true);
             this.showMessage("Downloading");
-            DropboxUtil.DownloadFile(this.handleFinish, this.showMessage);
+            let result = await DropboxUtil.DownloadFile();
+            if (result) {
+              this.handleFinish();
+            } else {
+              this.showMessage("Download failed,network problem or no backup");
+              this.props.handleLoadingDialog(false);
+            }
           }
 
           break;
@@ -94,7 +122,7 @@ class BackupDialog extends React.Component<
           break;
 
         case 3:
-          if (!OtherUtil.getReaderConfig("webdav_token")) {
+          if (!StorageUtil.getReaderConfig("webdav_token")) {
             this.props.handleTokenDialog(true);
             break;
           }
@@ -102,19 +130,39 @@ class BackupDialog extends React.Component<
             this.showMessage("Uploading");
             this.props.handleLoadingDialog(true);
 
-            BackupUtil.backup(
+            let blob: any = await backup(
               this.props.books,
               this.props.notes,
               this.props.bookmarks,
-              this.handleFinish,
-              3,
-              this.showMessage
+              false
             );
+            if (!blob) {
+              this.showMessage("Backup Failed");
+              this.props.handleLoadingDialog(false);
+            }
+
+            let result = await WebdavUtil.UploadFile(
+              new File([blob], "data.zip", {
+                lastModified: new Date().getTime(),
+                type: blob.type,
+              })
+            );
+            if (result) {
+              this.handleFinish();
+            } else {
+              this.showMessage("Upload failed, check your connection");
+              this.props.handleLoadingDialog(false);
+            }
           } else {
             this.showMessage("Downloading");
             this.props.handleLoadingDialog(true);
 
-            WebdavUtil.DownloadFile(this.handleFinish, this.showMessage);
+            let result = await WebdavUtil.DownloadFile();
+            if (!result) {
+              this.showMessage("Download failed,network problem or no backup");
+            } else {
+              this.handleFinish();
+            }
           }
           break;
         default:
@@ -124,7 +172,6 @@ class BackupDialog extends React.Component<
   };
   render() {
     const renderDrivePage = () => {
-      !isElectron && driveList.pop();
       return driveList.map((item, index) => {
         return (
           <li
@@ -139,22 +186,22 @@ class BackupDialog extends React.Component<
               <span
                 className={`icon-${item.icon} backup-page-list-icon`}
               ></span>
-              {OtherUtil.getReaderConfig("dropbox_token") && index === 1 ? (
+              {StorageUtil.getReaderConfig("dropbox_token") && index === 1 ? (
                 <div
                   className="backup-page-list-title"
                   onClick={() => {
-                    OtherUtil.setReaderConfig("dropbox_token", "");
+                    StorageUtil.setReaderConfig("dropbox_token", "");
                     this.showMessage("Unauthorize Successfully");
                   }}
                   style={{ color: "rgb(0, 120, 212)" }}
                 >
                   <Trans>Unauthorize</Trans>
                 </div>
-              ) : OtherUtil.getReaderConfig("webdav_token") && index === 3 ? (
+              ) : StorageUtil.getReaderConfig("webdav_token") && index === 3 ? (
                 <div
                   className="backup-page-list-title"
                   onClick={() => {
-                    OtherUtil.setReaderConfig("webdav_token", "");
+                    StorageUtil.setReaderConfig("webdav_token", "");
                     this.showMessage("Unauthorize Successfully");
                   }}
                   style={{ color: "rgb(0, 120, 212)" }}
@@ -171,10 +218,12 @@ class BackupDialog extends React.Component<
         );
       });
     };
+
     const dialogProps = {
       driveName: driveList[this.state.currentDrive!].icon,
       url: driveList[this.state.currentDrive!].url,
     };
+
     return (
       <div className="backup-page-container">
         {this.props.isOpenTokenDialog ? <TokenDialog {...dialogProps} /> : null}

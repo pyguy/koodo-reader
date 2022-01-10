@@ -1,11 +1,10 @@
-//绑定网盘的弹窗
 import React, { Component } from "react";
 import "./tokenDialog.css";
-import copy from "copy-text-to-clipboard";
 import { Trans } from "react-i18next";
 import { TokenDialogProps, TokenDialogState } from "./interface";
-import OtherUtil from "../../../utils/otherUtil";
-
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
+import toast from "react-hot-toast";
+import { isElectron } from "react-device-detect";
 class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
   constructor(props: TokenDialogProps) {
     super(props);
@@ -16,31 +15,38 @@ class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
     this.props.handleTokenDialog(false);
   };
   handleTokenComfirm = () => {
-    let token: string = (document.querySelector(
-      ".token-dialog-token-box"
-    ) as HTMLTextAreaElement).value;
-    OtherUtil.setReaderConfig(`${this.props.driveName}_token`, token);
+    let token: string = (
+      document.querySelector(".token-dialog-token-box") as HTMLTextAreaElement
+    ).value;
+    StorageUtil.setReaderConfig(`${this.props.driveName}_token`, token);
     this.props.handleTokenDialog(false);
-    this.props.handleMessage("Add Successfully");
-    this.props.handleMessageBox(true);
+    toast.success(this.props.t("Add Successfully"));
   };
   handleDavComfirm = () => {
-    let url: string = (document.querySelector(
-      ".token-dialog-url-box"
-    ) as HTMLTextAreaElement).value;
-    let username: string = (document.querySelector(
-      ".token-dialog-username-box"
-    ) as HTMLTextAreaElement).value;
-    let password: string = (document.querySelector(
-      ".token-dialog-password-box"
-    ) as HTMLTextAreaElement).value;
-    OtherUtil.setReaderConfig(
+    let url: string = (
+      document.querySelector(".token-dialog-url-box") as HTMLTextAreaElement
+    ).value;
+    let username: string = (
+      document.querySelector(
+        ".token-dialog-username-box"
+      ) as HTMLTextAreaElement
+    ).value;
+    let password: string = (
+      document.querySelector(
+        ".token-dialog-password-box"
+      ) as HTMLTextAreaElement
+    ).value;
+    StorageUtil.setReaderConfig(
       `${this.props.driveName}_token`,
       JSON.stringify({ url, username, password })
     );
     this.props.handleTokenDialog(false);
-    this.props.handleMessage("Add Successfully");
-    this.props.handleMessageBox(true);
+    toast.success(this.props.t("Add Successfully"));
+  };
+  handleJump = (url: string) => {
+    isElectron
+      ? window.require("electron").shell.openExternal(url)
+      : window.open(url);
   };
   render() {
     return (
@@ -57,7 +63,7 @@ class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
               <div
                 className="token-dialog-info-text"
                 style={
-                  OtherUtil.getReaderConfig("lang") === "en"
+                  StorageUtil.getReaderConfig("lang") === "en"
                     ? { fontSize: "14px" }
                     : {}
                 }
@@ -91,7 +97,7 @@ class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
               <div
                 className="token-dialog-info-text"
                 style={
-                  OtherUtil.getReaderConfig("lang") === "en"
+                  StorageUtil.getReaderConfig("lang") === "en"
                     ? { fontSize: "14px" }
                     : {}
                 }
@@ -101,12 +107,10 @@ class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
               <div
                 className="token-dialog-link-text"
                 onClick={() => {
-                  copy(this.props.url);
-                  this.props.handleMessage("Copy Successfully");
-                  this.props.handleMessageBox(true);
+                  this.handleJump(this.props.url);
                 }}
               >
-                <Trans>Copy Link</Trans>
+                <Trans>Authorize</Trans>
               </div>
               <textarea className="token-dialog-token-box" />
             </>

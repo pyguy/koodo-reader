@@ -1,18 +1,15 @@
-//弹出菜单
 import {
   handleSelection,
   handleOpenMenu,
   handleMenuMode,
   handleChangeDirection,
-} from "../../../store/actions/viewArea";
+  handleNoteKey,
+} from "../../../store/actions";
 import { connect } from "react-redux";
 import { stateType } from "../../../store";
-import {
-  handleMessageBox,
-  handleMessage,
-} from "../../../store/actions/manager";
-import { handleNoteKey } from "../../../store/actions/reader";
 import PopupMenu from "./component";
+import { withTranslation } from "react-i18next";
+
 const mapStateToProps = (state: stateType) => {
   return {
     digests: state.reader.digests,
@@ -31,8 +28,9 @@ const actionCreator = {
   handleOpenMenu,
   handleMenuMode,
   handleChangeDirection,
-  handleMessageBox,
-  handleMessage,
   handleNoteKey,
 };
-export default connect(mapStateToProps, actionCreator)(PopupMenu);
+export default connect(
+  mapStateToProps,
+  actionCreator
+)(withTranslation()(PopupMenu));

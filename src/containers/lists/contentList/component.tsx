@@ -1,8 +1,9 @@
-//图书导航栏的目录列表
 import React from "react";
 import "./contentList.css";
 import { ContentListProps, ContentListState } from "./interface";
-import OtherUtil from "../../../utils/otherUtil";
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
+import _ from "underscore";
+import RecordLocation from "../../../utils/readUtils/recordLocation";
 class ContentList extends React.Component<ContentListProps, ContentListState> {
   constructor(props: ContentListProps) {
     super(props);
@@ -10,7 +11,8 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
       chapters: [],
       isCollapsed: true,
       currentIndex: -1,
-      isExpandContent: OtherUtil.getReaderConfig("isExpandContent") === "yes",
+      currentChapter: "",
+      isExpandContent: StorageUtil.getReaderConfig("isExpandContent") === "yes",
     };
     this.handleJump = this.handleJump.bind(this);
   }
@@ -36,18 +38,29 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
   handleJump(event: any) {
     event.preventDefault();
     let href = event.target.getAttribute("href");
-    if (this.props.currentEpub.rendition) {
-      this.props.currentEpub.rendition.display(href);
+    if (this.props.currentEpub && this.props.currentEpub.loaded) {
+      let _href =
+        this.props.currentEpub.spine.items.filter(
+          (item) => item.href.indexOf(href) > -1
+        )[0].href || href;
+      this.props.currentEpub.rendition.display(_href);
     } else {
       let id = href.substr(1);
-
-      var top = window.frames[0].document.getElementById(id)?.offsetTop;
-      if (!top) return;
-      window.frames[0].scrollTo(0, top);
+      let title =
+        this.state.chapters[_.findIndex(this.state.chapters, { id })].label;
+      RecordLocation.recordHtmlLocation(
+        this.props.currentBook.key,
+        "test",
+        title,
+        "test",
+        "0"
+      );
+      this.props.htmlBook.rendition.goToChapter(title);
+      this.props.handleCurrentChapter(title);
     }
   }
   UNSAFE_componentWillReceiveProps(nextProps: ContentListProps) {
-    if (nextProps.htmlBook !== this.props.htmlBook) {
+    if (nextProps.htmlBook && nextProps.htmlBook !== this.props.htmlBook) {
       this.setState({ chapters: nextProps.htmlBook.chapters });
     }
   }
@@ -81,7 +94,9 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
               onClick={this.handleJump}
               className="book-content-name"
             >
-              {item.label}
+              {item.label.indexOf("#") > -1
+                ? item.label.split("#")[0]
+                : item.label}
             </a>
             {item.subitems.length > 0 &&
             (this.state.currentIndex === index ||

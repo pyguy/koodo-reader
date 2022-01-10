@@ -1,8 +1,7 @@
-//为空页面
 import React from "react";
 import "./viewMode.css";
 import { ViewModeProps, ViewModeState } from "./interface";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import { Tooltip } from "react-tippy";
 import { viewMode } from "../../constants/viewMode";
 
@@ -12,7 +11,7 @@ class ViewMode extends React.Component<ViewModeProps, ViewModeState> {
     this.state = {};
   }
   handleChange = (mode: string) => {
-    OtherUtil.setReaderConfig("viewMode", mode);
+    StorageUtil.setReaderConfig("viewMode", mode);
     this.props.handleFetchList();
   };
   render() {

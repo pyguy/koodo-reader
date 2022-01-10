@@ -5,19 +5,11 @@ import localforage from "localforage";
 import Reader from "../../containers/epubReader";
 import { withRouter } from "react-router-dom";
 import _ from "underscore";
-import BookUtil from "../../utils/bookUtil";
-import Lottie from "react-lottie";
+import BookUtil from "../../utils/fileUtils/bookUtil";
 import "../../assets/styles/reset.css";
-import animationSiri from "../../assets/lotties/siri.json";
+import toast, { Toaster } from "react-hot-toast";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 
-const siriOptions = {
-  loop: true,
-  autoplay: true,
-  animationData: animationSiri,
-  rendererSettings: {
-    preserveAspectRatio: "xMidYMid slice",
-  },
-};
 declare var window: any;
 
 class EpubReader extends React.Component<EpubReaderProps, EpubReaderState> {
@@ -28,29 +20,44 @@ class EpubReader extends React.Component<EpubReaderProps, EpubReaderState> {
   }
 
   componentWillMount() {
+    if (StorageUtil.getReaderConfig("isMergeWord") === "yes") {
+      document
+        .querySelector("body")
+        ?.setAttribute("style", "background-color: rgba(0,0,0,0)");
+    }
     let url = document.location.href.split("/");
     let key = url[url.length - 1].split("?")[0];
 
     localforage.getItem("books").then((result: any) => {
-      let book = result[_.findIndex(result, { key })];
-      BookUtil.fetchBook(key).then((result) => {
+      let book =
+        result[_.findIndex(result, { key })] ||
+        JSON.parse(localStorage.getItem("tempBook") || "{}");
+
+      BookUtil.fetchBook(key, false, book.path).then((result) => {
+        if (!result) {
+          toast.error(this.props.t("Book not exsits"));
+          return;
+        }
         this.props.handleReadingBook(book);
+
         this.props.handleReadingEpub(window.ePub(result, {}));
         this.props.handleReadingState(true);
         RecentBooks.setRecent(key);
+        document.title = book.name + " - Koodo Reader";
       });
     });
   }
 
   render() {
     if (!this.props.isReading) {
-      return (
-        <div className="spinner">
-          <Lottie options={siriOptions} height={100} width={300} />
-        </div>
-      );
+      return null;
     }
-    return <Reader />;
+    return (
+      <>
+        <Toaster />
+        <Reader />
+      </>
+    );
   }
 }
 export default withRouter(EpubReader);

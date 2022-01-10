@@ -2,32 +2,31 @@ import {
   handleFetchNotes,
   handleFetchBookmarks,
   handleFetchChapters,
-} from "../../store/actions/reader";
-import { handleFetchPercentage } from "../../store/actions/progressPanel";
-import {
-  handleMessageBox,
+  handleFetchPercentage,
   handleFetchBooks,
-} from "../../store/actions/manager";
-import { handleRenderFunc } from "../../store/actions/book";
+  handleRenderFunc,
+} from "../../store/actions";
+
 import "./index.css";
 import { connect } from "react-redux";
 import { stateType } from "../../store";
 import Reader from "./component";
-
+import { withTranslation } from "react-i18next";
 const mapStateToProps = (state: stateType) => {
   return {
     currentEpub: state.book.currentEpub,
     currentBook: state.book.currentBook,
-    isMessage: state.manager.isMessage,
   };
 };
 const actionCreator = {
   handleFetchNotes,
   handleFetchBookmarks,
   handleFetchChapters,
-  handleMessageBox,
   handleFetchPercentage,
   handleFetchBooks,
   handleRenderFunc,
 };
-export default connect(mapStateToProps, actionCreator)(Reader);
+export default connect(
+  mapStateToProps,
+  actionCreator
+)(withTranslation()(Reader));

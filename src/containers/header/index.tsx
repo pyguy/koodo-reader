@@ -1,16 +1,16 @@
-//header 页面
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import {
   handleSortDisplay,
-  handleMessageBox,
-  handleMessage,
   handleSetting,
   handleAbout,
   handleTipDialog,
   handleTip,
-} from "../../store/actions/manager";
-import { handleBackupDialog } from "../../store/actions/backupPage";
+  handleBackupDialog,
+  handleFetchBooks,
+  handleFetchNotes,
+  handleFetchBookmarks,
+} from "../../store/actions";
 import { stateType } from "../../store";
 import Header from "./component";
 
@@ -20,6 +20,7 @@ const mapStateToProps = (state: stateType) => {
     isAboutOpen: state.manager.isAboutOpen,
     bookmarks: state.reader.bookmarks,
     books: state.manager.books,
+    isNewWarning: state.manager.isNewWarning,
     notes: state.reader.notes,
     isCollapsed: state.sidebar.isCollapsed,
 
@@ -28,13 +29,14 @@ const mapStateToProps = (state: stateType) => {
 };
 const actionCreator = {
   handleSortDisplay,
-  handleMessageBox,
-  handleMessage,
   handleBackupDialog,
   handleSetting,
   handleAbout,
   handleTipDialog,
   handleTip,
+  handleFetchBooks,
+  handleFetchNotes,
+  handleFetchBookmarks,
 };
 export default connect(
   mapStateToProps,

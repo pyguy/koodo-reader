@@ -43,11 +43,12 @@ export type stateType = {
     isAboutOpen: boolean;
     isShowLoading: boolean;
     isShowNew: boolean;
+    isNewWarning: boolean;
+    isSelectBook: boolean;
+    selectedBooks: string[];
     isTipDialog: boolean;
     bookSortCode: { sort: number; order: number };
     noteSortCode: { sort: number; order: number };
-    isMessage: boolean;
-    message: string;
     tip: string;
   };
   book: {
@@ -77,15 +78,14 @@ export type stateType = {
     chapters: any[];
     flattenChapters: any;
     noteKey: string;
+    currentChapter: string;
     originalText: string;
     htmlBook: HtmlBookModel;
   };
   sidebar: {
     mode: string;
     shelfIndex: number;
-    isDragToLove: boolean;
     isCollapsed: boolean;
-    isDragToDelete: boolean;
   };
   viewArea: {
     selection: string;

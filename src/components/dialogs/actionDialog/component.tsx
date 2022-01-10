@@ -1,13 +1,13 @@
-//对图书操作的菜单
 import React from "react";
 import "./actionDialog.css";
 import { Trans } from "react-i18next";
 import { ActionDialogProps } from "./interface";
 import AddTrash from "../../../utils/readUtils/addTrash";
 import FileSaver from "file-saver";
-import localforage from "localforage";
 import Parser from "html-react-parser";
 import ShelfUtil from "../../../utils/readUtils/shelfUtil";
+import toast from "react-hot-toast";
+import BookUtil from "../../../utils/fileUtils/bookUtil";
 class ActionDialog extends React.Component<ActionDialogProps> {
   handleDeleteBook = () => {
     this.props.handleReadingBook(this.props.currentBook);
@@ -27,8 +27,7 @@ class ActionDialog extends React.Component<ActionDialogProps> {
   handleRestoreBook = () => {
     AddTrash.clear(this.props.currentBook.key);
     this.props.handleActionDialog(false);
-    this.props.handleMessage("Restore Successfully");
-    this.props.handleMessageBox(true);
+    toast.success(this.props.t("Restore Successfully"));
     this.props.handleFetchBooks();
   };
   render() {
@@ -42,7 +41,8 @@ class ActionDialog extends React.Component<ActionDialogProps> {
           style={{
             left: this.props.left,
             top: this.props.top,
-            maxHeight: "40px",
+            maxHeight: "45px",
+            paddingTop: "3px",
           }}
         >
           <div className="action-dialog-actions-container">
@@ -110,17 +110,18 @@ class ActionDialog extends React.Component<ActionDialogProps> {
           <div
             className="action-dialog-edit"
             onClick={() => {
-              localforage
-                .getItem(this.props.currentBook.key)
-                .then((result: any) => {
-                  this.props.handleMessage("Export Successfully");
-                  this.props.handleMessageBox(true);
-                  FileSaver.saveAs(
-                    new Blob([result]),
-                    this.props.currentBook.name +
-                      `.${this.props.currentBook.format.toLocaleLowerCase()}`
-                  );
-                });
+              BookUtil.fetchBook(
+                this.props.currentBook.key,
+                true,
+                this.props.currentBook.path
+              ).then((result: any) => {
+                toast.success(this.props.t("Export Successfully"));
+                FileSaver.saveAs(
+                  new Blob([result]),
+                  this.props.currentBook.name +
+                    `.${this.props.currentBook.format.toLocaleLowerCase()}`
+                );
+              });
             }}
           >
             <span className="icon-export view-icon"></span>
@@ -161,7 +162,11 @@ class ActionDialog extends React.Component<ActionDialogProps> {
             </p>
             <p className="action-dialog-book-title">
               {this.props.currentBook.size
-                ? parseInt(this.props.currentBook.size / 1024 + "") + "Kb"
+                ? this.props.currentBook.size / 1024 / 1024 > 1
+                  ? parseFloat(
+                      this.props.currentBook.size / 1024 / 1024 + ""
+                    ).toFixed(2) + "Mb"
+                  : parseInt(this.props.currentBook.size / 1024 + "") + "Kb"
                 : // eslint-disable-next-line
                   "0" + "Kb"}
             </p>
@@ -184,7 +189,7 @@ class ActionDialog extends React.Component<ActionDialogProps> {
               {ShelfUtil.getBookPosition(this.props.currentBook.key).map(
                 (item) => (
                   <>
-                    <Trans>{item}</Trans>&nbsp;
+                    #<Trans>{item}</Trans>&nbsp;
                   </>
                 )
               )}

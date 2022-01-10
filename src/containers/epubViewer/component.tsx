@@ -1,4 +1,3 @@
-//阅读器图书内容区域
 import React from "react";
 import PopupMenu from "../../components/popups/popupMenu";
 import { ViewAreaProps, ViewAreaStates } from "./interface";
@@ -6,17 +5,9 @@ import RecordLocation from "../../utils/readUtils/recordLocation";
 import BookmarkModel from "../../model/Bookmark";
 import StyleUtil from "../../utils/readUtils/styleUtil";
 import ImageViewer from "../../components/imageViewer";
-import Lottie from "react-lottie";
-import animationSiri from "../../assets/lotties/siri.json";
+import { getIframeDoc } from "../../utils/serviceUtils/docUtil";
+import { tsTransform } from "../../utils/serviceUtils/langUtil";
 
-const siriOptions = {
-  loop: true,
-  autoplay: true,
-  animationData: animationSiri,
-  rendererSettings: {
-    preserveAspectRatio: "xMidYMid slice",
-  },
-};
 declare var window: any;
 
 class EpubViewer extends React.Component<ViewAreaProps, ViewAreaStates> {
@@ -24,10 +15,12 @@ class EpubViewer extends React.Component<ViewAreaProps, ViewAreaStates> {
   constructor(props: ViewAreaProps) {
     super(props);
     this.state = {
-      cfiRange: null,
-      contents: null,
+      // cfiRange: null,
       rect: null,
-      loading: true,
+      chapterIndex: 0,
+      chapter: "",
+      pageWidth: 0,
+      pageHeight: 0,
     };
     this.isFirst = true;
   }
@@ -67,21 +60,46 @@ class EpubViewer extends React.Component<ViewAreaProps, ViewAreaStates> {
       this.isFirst = false;
     });
     this.props.rendition.on("rendered", () => {
-      this.setState({ loading: false });
-      let iframe = document.getElementsByTagName("iframe")[0];
-      if (!iframe) return;
-      let doc = iframe.contentDocument;
-      if (!doc) {
-        return;
+      let doc = getIframeDoc();
+      if (!doc) return;
+      const currentLocation = this.props.rendition.currentLocation();
+      let chapterHref = currentLocation.start.href;
+      if (!currentLocation || !currentLocation.start) return;
+      this.setState({
+        chapterIndex: currentLocation.start.index,
+        pageWidth: this.props.currentEpub.rendition._layout.width,
+        pageHeight: this.props.currentEpub.rendition._layout.height,
+      });
+      let chapter = "Unknown Chapter";
+      let currentChapter = this.props.flattenChapters.filter(
+        (item: any) => item.href.split("#")[0] === chapterHref
+      )[0];
+      if (currentChapter) {
+        chapter = currentChapter.label.trim(" ");
       }
+      this.setState({ chapter });
       StyleUtil.addDefaultCss();
       this.props.rendition.themes.default(StyleUtil.getCustomCss(false));
+      tsTransform();
     });
-    this.props.rendition.on("selected", (cfiRange: any, contents: any) => {
-      var range = contents.range(cfiRange);
-      var rect = range.getBoundingClientRect();
-      this.setState({ cfiRange, contents, rect });
-    });
+
+    this.props.rendition.on(
+      "selected",
+      (cfiRange: any, contents: any, event: any) => {
+        var range = contents.range(cfiRange);
+        let rect;
+        if (range) {
+          rect = range.getBoundingClientRect();
+        } else {
+          let doc = getIframeDoc();
+          if (!doc) return;
+          if (!doc.getSelection()) return;
+          rect = doc!.getSelection()!.getRangeAt(0).getBoundingClientRect();
+        }
+
+        this.setState({ rect });
+      }
+    );
     this.props.rendition.themes.default(StyleUtil.getCustomCss(false));
     this.props.rendition.display(
       RecordLocation.getCfi(this.props.currentBook.key) === null
@@ -93,26 +111,23 @@ class EpubViewer extends React.Component<ViewAreaProps, ViewAreaStates> {
   render() {
     const popupMenuProps = {
       rendition: this.props.rendition,
-      cfiRange: this.state.cfiRange,
-      contents: this.state.contents,
       rect: this.state.rect,
+      pageWidth: this.state.pageWidth,
+      pageHeight: this.state.pageHeight,
+      chapterIndex: this.state.chapterIndex,
+      chapter: this.state.chapter,
+    };
+    const imageViewerProps = {
+      isShow: this.props.isShow,
+      rendition: this.props.rendition,
+      handleEnterReader: this.props.handleEnterReader,
+      handleLeaveReader: this.props.handleLeaveReader,
     };
     return (
       <div className="view-area">
-        <ImageViewer
-          {...{
-            isShow: this.props.isShow,
-            rendition: this.props.rendition,
-            handleEnterReader: this.props.handleEnterReader,
-            handleLeaveReader: this.props.handleLeaveReader,
-          }}
-        />
+        <ImageViewer {...imageViewerProps} />
+
         <PopupMenu {...popupMenuProps} />
-        {this.state.loading ? (
-          <div className="spinner">
-            <Lottie options={siriOptions} height={100} width={300} />
-          </div>
-        ) : null}
         <>
           {this.props.isShowBookmark ? <div className="bookmark"></div> : null}
         </>

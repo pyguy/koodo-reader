@@ -110,11 +110,20 @@ textarea::-ms-input-placeholder,
 .setting-icon-container:hover,
 .animation-mask,
 .animation-mask-local,
-.copy-option:hover {
+.sort-by-category-list:hover,
+.sort-by-order-list:hover,
+.backup-page-backup:hover,
+.action-dialog-add:hover,
+.action-dialog-delete:hover,
+.action-dialog-edit:hover,
+.backup-page-next:hover,
+.book-manage-title:hover,
+.backup-page-list-item:hover,
+Z .copy-option:hover {
   background-color: rgba(235, 235, 235, 0.035);
 }
 .drag-background {
-  background-color: rgba(71, 76, 80, 1);
+  background: hsla(0, 0%, 0%, 0.5);
 }
 .action-dialog-container,
 .add-dialog-container,
@@ -196,7 +205,7 @@ textarea::-ms-input-placeholder,
 .active-tag,
 .active-page,
 .sk-chase-dot:before {
-  background-color: rgba(235, 235, 235, 1);
+  background-color: rgba(235, 235, 235, 1) !important;
 }
 .exit-reading-text,
 .add-bookmark-text,
@@ -242,5 +251,5 @@ input,
 .active-tag,
 .active-page,
 .popup-menu-triangle-down {
-  color: rgba(47, 52, 55, 1);
+  color: rgba(47, 52, 55, 1) !important;
 }

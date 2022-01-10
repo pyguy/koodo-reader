@@ -1,11 +1,8 @@
 import { connect } from "react-redux";
-import {
-  handleOpenMenu,
-  handleMenuMode,
-} from "../../../store/actions/viewArea";
+import { handleOpenMenu, handleMenuMode } from "../../../store/actions";
 import { stateType } from "../../../store";
 import { withTranslation } from "react-i18next";
-import PopupNote from "./component";
+import PopupTrans from "./component";
 const mapStateToProps = (state: stateType) => {
   return {
     originalText: state.reader.originalText,
@@ -18,4 +15,4 @@ const actionCreator = {
 export default connect(
   mapStateToProps,
   actionCreator
-)(withTranslation()(PopupNote as any));
+)(withTranslation()(PopupTrans as any));

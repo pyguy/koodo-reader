@@ -1,15 +1,11 @@
-//右侧阅读选项面板
 import React from "react";
 import { SettingSwitchProps, SettingSwitchState } from "./interface";
 import { Trans } from "react-i18next";
 import TextToSpeech from "../../textToSpeech";
-import OtherUtil from "../../../utils/otherUtil";
-import {
-  readerSettingList,
-  htmlSettingList,
-} from "../../../constants/settingList";
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
+import { readerSettingList } from "../../../constants/settingList";
 import { isElectron } from "react-device-detect";
-
+import toast from "react-hot-toast";
 class SettingSwitch extends React.Component<
   SettingSwitchProps,
   SettingSwitchState
@@ -17,121 +13,62 @@ class SettingSwitch extends React.Component<
   constructor(props: SettingSwitchProps) {
     super(props);
     this.state = {
-      isBold: OtherUtil.getReaderConfig("isBold") === "yes",
-      isUnderline: OtherUtil.getReaderConfig("isUnderline") === "yes",
-      isShadow: OtherUtil.getReaderConfig("isShadow") === "yes",
-      isItalic: OtherUtil.getReaderConfig("isItalic") === "yes",
-      isInvert: OtherUtil.getReaderConfig("isInvert") === "yes",
-      isUseBackground: OtherUtil.getReaderConfig("isUseBackground") === "yes",
-      isHideFooter: OtherUtil.getReaderConfig("isHideFooter") === "yes",
-      isHideHeader: OtherUtil.getReaderConfig("isHideHeader") === "yes",
+      isBold: StorageUtil.getReaderConfig("isBold") === "yes",
+      isIndent: StorageUtil.getReaderConfig("isIndent") === "yes",
+      isSliding: StorageUtil.getReaderConfig("isSliding") === "yes",
+      isUnderline: StorageUtil.getReaderConfig("isUnderline") === "yes",
+      isShadow: StorageUtil.getReaderConfig("isShadow") === "yes",
+      isItalic: StorageUtil.getReaderConfig("isItalic") === "yes",
+      isInvert: StorageUtil.getReaderConfig("isInvert") === "yes",
+      isHideBackground:
+        StorageUtil.getReaderConfig("isHideBackground") === "yes",
+      isHideFooter: StorageUtil.getReaderConfig("isHideFooter") === "yes",
+      isHideHeader: StorageUtil.getReaderConfig("isHideHeader") === "yes",
+      isHidePageButton:
+        StorageUtil.getReaderConfig("isHidePageButton") === "yes",
+      isHideMenuButton:
+        StorageUtil.getReaderConfig("isHideMenuButton") === "yes",
     };
   }
-  handleRest = () => {
-    this.props.renderFunc();
-  };
+
   _handleRest = () => {
     if (isElectron) {
-      this.props.handleMessage("Take effect at next startup");
-      this.props.handleMessageBox(true);
+      toast(this.props.t("Take effect at next startup"));
     } else {
       window.location.reload();
     }
   };
-  handleBold = () => {
-    this.setState({ isBold: !this.state.isBold }, () => {
-      OtherUtil.setReaderConfig("isBold", this.state.isBold ? "yes" : "no");
-      setTimeout(() => {
-        this.handleRest();
-      }, 500);
-    });
-  };
-  handleItalic = () => {
-    this.setState({ isItalic: !this.state.isItalic }, () => {
-      OtherUtil.setReaderConfig("isItalic", this.state.isItalic ? "yes" : "no");
-      setTimeout(() => {
-        this.handleRest();
-      }, 500);
-    });
-  };
-  handleShadow = () => {
-    this.setState({ isShadow: !this.state.isShadow }, () => {
-      OtherUtil.setReaderConfig("isShadow", this.state.isShadow ? "yes" : "no");
-      setTimeout(() => {
-        this.handleRest();
-      }, 500);
-    });
-  };
-  handleInvert = () => {
-    this.setState({ isInvert: !this.state.isInvert }, () => {
-      OtherUtil.setReaderConfig("isInvert", this.state.isInvert ? "yes" : "no");
-      setTimeout(() => {
-        this.handleRest();
-      }, 500);
-    });
-  };
-  handleUnderline = () => {
-    this.setState({ isUnderline: !this.state.isUnderline }, () => {
-      OtherUtil.setReaderConfig(
-        "isUnderline",
-        this.state.isUnderline ? "yes" : "no"
+
+  _handleChange = (stateName: string) => {
+    this.setState({ [stateName]: !this.state[stateName] } as any, () => {
+      StorageUtil.setReaderConfig(
+        stateName,
+        this.state[stateName] ? "yes" : "no"
       );
+      toast(this.props.t("Change Successfully"));
       setTimeout(() => {
-        this.handleRest();
+        this.props.renderFunc();
       }, 500);
     });
-  };
-  handleChangeBackground = () => {
-    this.setState({ isUseBackground: !this.state.isUseBackground });
-    OtherUtil.setReaderConfig(
-      "isUseBackground",
-      this.state.isUseBackground ? "no" : "yes"
-    );
-    this.state.isUseBackground
-      ? this.props.handleMessage("Turn Off Successfully")
-      : this.props.handleMessage("Turn On Successfully");
-    this.props.handleMessageBox(true);
-    setTimeout(() => {
-      this._handleRest();
-    }, 500);
-  };
-  handleFooter = () => {
-    this.setState({ isHideFooter: !this.state.isHideFooter });
-    OtherUtil.setReaderConfig(
-      "isHideFooter",
-      this.state.isHideFooter ? "no" : "yes"
-    );
-    this.state.isHideFooter
-      ? this.props.handleMessage("Turn On Successfully")
-      : this.props.handleMessage("Turn Off Successfully");
-    this.props.handleMessageBox(true);
-    setTimeout(() => {
-      this._handleRest();
-    }, 500);
-  };
-  handleHeader = () => {
-    this.setState({ isHideHeader: !this.state.isHideHeader });
-    OtherUtil.setReaderConfig(
-      "isHideHeader",
-      this.state.isHideHeader ? "no" : "yes"
-    );
-    this.state.isHideHeader
-      ? this.props.handleMessage("Turn On Successfully")
-      : this.props.handleMessage("Turn Off Successfully");
-    this.props.handleMessageBox(true);
-    setTimeout(() => {
-      this._handleRest();
-    }, 500);
   };
 
+  handleChange = (stateName: string) => {
+    this.setState({ [stateName]: !this.state[stateName] } as any);
+    StorageUtil.setReaderConfig(
+      stateName,
+      this.state[stateName] ? "no" : "yes"
+    );
+
+    toast(this.props.t("Change Successfully"));
+    setTimeout(() => {
+      this._handleRest();
+    }, 500);
+  };
   render() {
     return (
       <>
-        {this.props.currentEpub.archived && <TextToSpeech />}
-        {(this.props.currentEpub.rendition
-          ? readerSettingList
-          : htmlSettingList
-        ).map((item) => (
+        {Object.keys(this.props.currentEpub).length !== 0 && <TextToSpeech />}
+        {readerSettingList.map((item) => (
           <div className="single-control-switch-container" key={item.title}>
             <span className="single-control-switch-title">
               <Trans>{item.title}</Trans>
@@ -142,28 +79,40 @@ class SettingSwitch extends React.Component<
               onClick={() => {
                 switch (item.propName) {
                   case "isBold":
-                    this.handleBold();
+                    this._handleChange("isBold");
+                    break;
+                  case "isIndent":
+                    this._handleChange("isIndent");
+                    break;
+                  case "isSliding":
+                    this._handleChange("isSliding");
                     break;
                   case "isItalic":
-                    this.handleItalic();
+                    this._handleChange("isItalic");
                     break;
                   case "isUnderline":
-                    this.handleUnderline();
+                    this._handleChange("isUnderline");
                     break;
                   case "isShadow":
-                    this.handleShadow();
+                    this._handleChange("isShadow");
                     break;
                   case "isInvert":
-                    this.handleInvert();
+                    this._handleChange("isInvert");
                     break;
                   case "isHideFooter":
-                    this.handleFooter();
+                    this.handleChange("isHideFooter");
                     break;
                   case "isHideHeader":
-                    this.handleHeader();
+                    this.handleChange("isHideHeader");
                     break;
-                  case "isUseBackground":
-                    this.handleChangeBackground();
+                  case "isHideBackground":
+                    this.handleChange("isHideBackground");
+                    break;
+                  case "isHidePageButton":
+                    this.handleChange("isHidePageButton");
+                    break;
+                  case "isHideMenuButton":
+                    this.handleChange("isHideMenuButton");
                     break;
                   default:
                     break;

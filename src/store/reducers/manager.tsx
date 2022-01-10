@@ -1,23 +1,24 @@
-import SortUtil from "../../utils/readUtils/sortUtil";
 const initState = {
   books: null,
   deletedBooks: [],
   searchResults: [],
   isSearch: false,
   isAboutOpen: false,
-  isBookSort: false,
+  isBookSort: localStorage.getItem("bookSortCode") ? true : false,
   isNoteSort: false,
   isSettingOpen: false,
   viewMode: "card",
   isSortDisplay: false,
   isShowLoading: false,
+  isNewWarning: false,
   isTipDialog: false,
   isShowNew: false,
   bookSortCode: { sort: 0, order: 1 },
-  noteSortCode: SortUtil.getNoteSortCode(),
-  isMessage: false,
+  noteSortCode: { sort: 2, order: 1 },
+  isSelectBook: false,
   message: "Add Successfully",
   tip: "",
+  selectedBooks: [],
 };
 export function manager(
   state = initState,
@@ -38,6 +39,16 @@ export function manager(
       return {
         ...state,
         searchResults: action.payload,
+      };
+    case "HANDLE_SELECT_BOOK":
+      return {
+        ...state,
+        isSelectBook: action.payload,
+      };
+    case "HANDLE_SELECTED_BOOKS":
+      return {
+        ...state,
+        selectedBooks: action.payload,
       };
     case "HANDLE_TIP_DIALOG":
       return {
@@ -96,16 +107,12 @@ export function manager(
         ...state,
         isShowNew: action.payload,
       };
-    case "HANDLE_MESSAGE":
+    case "HANDLE_NEW_WARNING":
       return {
         ...state,
-        message: action.payload,
+        isNewWarning: action.payload,
       };
-    case "HANDLE_MESSAGE_BOX":
-      return {
-        ...state,
-        isMessage: action.payload,
-      };
+
     case "HANDLE_SORT_CODE":
       return {
         ...state,

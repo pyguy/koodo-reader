@@ -1,17 +1,15 @@
-//左下角的图标外链
 import React from "react";
 import "./settingDialog.css";
 import { SettingInfoProps, SettingInfoState } from "./interface";
 import { Trans } from "react-i18next";
 import i18n from "../../../i18n";
 import { version } from "../../../../package.json";
-import OtherUtil from "../../../utils/otherUtil";
-import SyncUtil from "../../../utils/syncUtils/common";
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
+import { changePath } from "../../../utils/syncUtils/common";
 import { isElectron } from "react-device-detect";
 import { dropdownList } from "../../../constants/dropdownList";
 import { Tooltip } from "react-tippy";
-import RestoreUtil from "../../../utils/syncUtils/restoreUtil";
-import BackupUtil from "../../../utils/syncUtils/backupUtil";
+import { restore } from "../../../utils/syncUtils/restoreUtil";
 import {
   settingList,
   langList,
@@ -19,6 +17,7 @@ import {
 } from "../../../constants/settingList";
 import { themeList } from "../../../constants/themeList";
 import _ from "underscore";
+import toast from "react-hot-toast";
 class SettingDialog extends React.Component<
   SettingInfoProps,
   SettingInfoState
@@ -26,60 +25,67 @@ class SettingDialog extends React.Component<
   constructor(props: SettingInfoProps) {
     super(props);
     this.state = {
-      isTouch: OtherUtil.getReaderConfig("isTouch") === "yes",
-      isAutoFullscreen: OtherUtil.getReaderConfig("isAutoFullscreen") === "yes",
-      isOpenBook: OtherUtil.getReaderConfig("isOpenBook") === "yes",
-      isExpandContent: OtherUtil.getReaderConfig("isExpandContent") === "yes",
-      isDisableUpdate: OtherUtil.getReaderConfig("isDisableUpdate") === "yes",
-      isDisplayDark: OtherUtil.getReaderConfig("isDisplayDark") === "yes",
-
+      isTouch: StorageUtil.getReaderConfig("isTouch") === "yes",
+      isImportPath: StorageUtil.getReaderConfig("isImportPath") === "yes",
+      isMergeWord: StorageUtil.getReaderConfig("isMergeWord") === "yes",
+      isPreventTrigger:
+        StorageUtil.getReaderConfig("isPreventTrigger") === "yes",
+      isAutoFullscreen:
+        StorageUtil.getReaderConfig("isAutoFullscreen") === "yes",
+      isPreventAdd: StorageUtil.getReaderConfig("isPreventAdd") === "yes",
+      isOpenBook: StorageUtil.getReaderConfig("isOpenBook") === "yes",
+      isExpandContent: StorageUtil.getReaderConfig("isExpandContent") === "yes",
+      isPreventSleep: StorageUtil.getReaderConfig("isPreventSleep") === "yes",
+      isOpenInMain: StorageUtil.getReaderConfig("isOpenInMain") === "yes",
+      isDisableUpdate: StorageUtil.getReaderConfig("isDisableUpdate") === "yes",
+      isDisplayDark: StorageUtil.getReaderConfig("isDisplayDark") === "yes",
+      isDisableAnalytics:
+        StorageUtil.getReaderConfig("isDisableAnalytics") === "yes",
+      isPDFCover: StorageUtil.getReaderConfig("isPDFCover") === "yes",
       currentThemeIndex: _.findLastIndex(themeList, {
-        name: OtherUtil.getReaderConfig("themeColor"),
+        name: StorageUtil.getReaderConfig("themeColor"),
       }),
     };
   }
   componentDidMount() {
-    OtherUtil.getReaderConfig("systemFont") &&
+    StorageUtil.getReaderConfig("systemFont") &&
       document
         .getElementsByClassName("lang-setting-dropdown")[0]
         ?.children[
           dropdownList[0].option.indexOf(
-            OtherUtil.getReaderConfig("systemFont")
+            StorageUtil.getReaderConfig("systemFont")
           )
         ].setAttribute("selected", "selected");
     document
       .getElementsByClassName("lang-setting-dropdown")[1]
       ?.children[
         ["zh", "cht", "en", "ru"].indexOf(
-          OtherUtil.getReaderConfig("lang") ||
+          StorageUtil.getReaderConfig("lang") ||
             (navigator.language.indexOf("zh") > -1 ? "zh" : "en")
         )
       ].setAttribute("selected", "selected");
     document.getElementsByClassName("lang-setting-dropdown")[2]?.children[
       _.findLastIndex(searchList, {
         value:
-          OtherUtil.getReaderConfig("searchEngine") ||
+          StorageUtil.getReaderConfig("searchEngine") ||
           (navigator.language === "zh-CN" ? "baidu" : "google"),
       })
     ].setAttribute("selected", "selected");
   }
   handleRest = (bool: boolean) => {
-    bool
-      ? this.props.handleMessage("Turn Off Successfully")
-      : this.props.handleMessage("Turn On Successfully");
-    this.props.handleMessageBox(true);
+    toast.success(this.props.t("Change Successfully"));
   };
   changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
-    OtherUtil.setReaderConfig("lang", lng);
+    StorageUtil.setReaderConfig("lang", lng);
   };
   changeSearch = (searchEngine: string) => {
-    OtherUtil.setReaderConfig("searchEngine", searchEngine);
+    StorageUtil.setReaderConfig("searchEngine", searchEngine);
   };
   changeFont = (font: string) => {
     let body = document.getElementsByTagName("body")[0];
     body.setAttribute("style", "font-family:" + font + "!important");
-    OtherUtil.setReaderConfig("systemFont", font);
+    StorageUtil.setReaderConfig("systemFont", font);
   };
   handleJump = (url: string) => {
     isElectron
@@ -88,7 +94,10 @@ class SettingDialog extends React.Component<
   };
   handleSetting = (stateName: string) => {
     this.setState({ [stateName]: !this.state[stateName] } as any);
-    OtherUtil.setReaderConfig(stateName, this.state[stateName] ? "no" : "yes");
+    StorageUtil.setReaderConfig(
+      stateName,
+      this.state[stateName] ? "no" : "yes"
+    );
     this.handleRest(this.state[stateName]);
   };
   syncFromLocation = async () => {
@@ -112,42 +121,33 @@ class SettingDialog extends React.Component<
       type: blobTemp.type,
     });
 
-    RestoreUtil.restore(
-      fileTemp,
-      () => {
-        BackupUtil.backup(
-          this.props.books,
-          this.props.notes,
-          this.props.bookmarks,
-          () => {
-            this.props.handleMessage("Change Successfully");
-            this.props.handleMessageBox(true);
-          },
-          5,
-          () => {}
-        );
-      },
-      true
-    );
+    let result = await restore(fileTemp, true);
+    if (result) {
+      toast.success(this.props.t("Change Successfully"));
+    } else {
+      toast.error(this.props.t("Change Failed"));
+    }
   };
   handleChangeLocation = async () => {
-    const { dialog } = window.require("electron").remote;
-    var path = await dialog.showOpenDialog({
-      properties: ["openDirectory"],
-    });
     const { ipcRenderer } = window.require("electron");
+    const path = await ipcRenderer.invoke("change-path");
     if (!path.filePaths[0]) {
       return;
     }
-    SyncUtil.changeLocation(
+    let result = await changePath(
       localStorage.getItem("storageLocation")
         ? localStorage.getItem("storageLocation")
         : ipcRenderer.sendSync("storage-location", "ping"),
-      path.filePaths[0],
-      this.props.handleMessage,
-      this.props.handleMessageBox,
-      this.syncFromLocation
+      path.filePaths[0]
     );
+    if (result === 1) {
+      this.syncFromLocation();
+    } else if (result === 2) {
+      this.props.handleFetchBooks();
+      toast.success(this.props.t("Change Successfully"));
+    } else {
+      toast.error(this.props.t("Change Failed"));
+    }
     localStorage.setItem("storageLocation", path.filePaths[0]);
     document.getElementsByClassName(
       "setting-dialog-location-title"
@@ -158,13 +158,20 @@ class SettingDialog extends React.Component<
   };
   handleDisplayDark = () => {
     this.setState({ isDisplayDark: !this.state.isDisplayDark });
-    OtherUtil.setReaderConfig(
+    StorageUtil.setReaderConfig(
       "isDisplayDark",
       this.state.isDisplayDark ? "no" : "yes"
     );
+    if (StorageUtil.getReaderConfig("isDisplayDark") === "yes") {
+      StorageUtil.setReaderConfig("backgroundColor", "rgba(44,47,49,1)");
+      StorageUtil.setReaderConfig("textColor", "rgba(255,255,255,1)");
+    } else {
+      StorageUtil.setReaderConfig("backgroundColor", "rgba(255,255,255,1)");
+      StorageUtil.setReaderConfig("textColor", "rgba(0,0,0,1)");
+    }
+
     if (isElectron) {
-      this.props.handleMessage("Try refresh or restart");
-      this.props.handleMessageBox(true);
+      toast(this.props.t("Try refresh or restart"));
     } else {
       window.location.reload();
     }
@@ -172,13 +179,26 @@ class SettingDialog extends React.Component<
 
   handleTheme = (name: string, index: number) => {
     this.setState({ currentThemeIndex: index });
-    OtherUtil.setReaderConfig("themeColor", name);
+    StorageUtil.setReaderConfig("themeColor", name);
     if (isElectron) {
-      this.props.handleMessage("Try refresh or restart");
-      this.props.handleMessageBox(true);
+      toast(this.props.t("Try refresh or restart"));
     } else {
       window.location.reload();
     }
+  };
+  handleMergeWord = () => {
+    if (this.state.isOpenInMain && !this.state.isMergeWord) {
+      toast(this.props.t("Please turn off open books in the main window"));
+      return;
+    }
+    this.handleSetting("isMergeWord");
+  };
+  handleOpenInMain = () => {
+    if (this.state.isMergeWord && !this.state.isOpenInMain) {
+      toast(this.props.t("Please turn off merge with word first"));
+      return;
+    }
+    this.handleSetting("isOpenInMain");
   };
   render() {
     return (
@@ -203,48 +223,55 @@ class SettingDialog extends React.Component<
           {settingList.map((item, index) => {
             return (
               <div
-                className="setting-dialog-new-title"
-                key={item.title}
                 style={
                   item.isElectron ? (isElectron ? {} : { display: "none" }) : {}
                 }
+                key={item.propName}
               >
-                <Trans>{item.title}</Trans>
-                <span
-                  className="single-control-switch"
-                  onClick={() => {
-                    switch (index) {
-                      case 0:
-                      case 1:
-                      case 2:
-                      case 3:
-                      case 4:
-                        this.handleSetting(item.propName);
-                        break;
-                      case 5:
-                        this.handleDisplayDark();
-                        break;
-                      default:
-                        break;
-                    }
-                  }}
-                  style={this.state[item.propName] ? {} : { opacity: 0.6 }}
-                >
+                <div className="setting-dialog-new-title" key={item.title}>
+                  <span style={{ width: "250px" }}>
+                    <Trans>{item.title}</Trans>
+                  </span>
+
                   <span
-                    className="single-control-button"
-                    style={
-                      this.state[item.propName]
-                        ? {
-                            transform: "translateX(20px)",
-                            transition: "transform 0.5s ease",
-                          }
-                        : {
-                            transform: "translateX(0px)",
-                            transition: "transform 0.5s ease",
-                          }
-                    }
-                  ></span>
-                </span>
+                    className="single-control-switch"
+                    onClick={() => {
+                      switch (item.propName) {
+                        case "isDisplayDark":
+                          this.handleDisplayDark();
+                          break;
+                        case "isMergeWord":
+                          this.handleMergeWord();
+                          break;
+                        case "isOpenInMain":
+                          this.handleOpenInMain();
+                          break;
+                        default:
+                          this.handleSetting(item.propName);
+                          break;
+                      }
+                    }}
+                    style={this.state[item.propName] ? {} : { opacity: 0.6 }}
+                  >
+                    <span
+                      className="single-control-button"
+                      style={
+                        this.state[item.propName]
+                          ? {
+                              transform: "translateX(20px)",
+                              transition: "transform 0.5s ease",
+                            }
+                          : {
+                              transform: "translateX(0px)",
+                              transition: "transform 0.5s ease",
+                            }
+                      }
+                    ></span>
+                  </span>
+                </div>
+                <p className="setting-option-subtitle">
+                  <Trans>{item.desc}</Trans>
+                </p>
               </div>
             );
           })}
@@ -349,7 +376,7 @@ class SettingDialog extends React.Component<
                   key={item.value}
                   className="lang-setting-option"
                 >
-                  {item.label}
+                  {this.props.t(item.label)}
                 </option>
               ))}
             </select>

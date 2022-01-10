@@ -1,15 +1,10 @@
 import localforage from "localforage";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import SortUtil from "../../utils/readUtils/sortUtil";
 import BookModel from "../../model/Book";
-import BookmarkModel from "../../model/Bookmark";
-import NoteModel from "../../model/Note";
 import { Dispatch } from "redux";
 import AddTrash from "../../utils/readUtils/addTrash";
 
-export function handleNotes(notes: NoteModel[]) {
-  return { type: "HANDLE_NOTES", payload: notes };
-}
 export function handleBooks(books: BookModel[]) {
   return { type: "HANDLE_BOOKS", payload: books };
 }
@@ -37,13 +32,7 @@ export function handleAbout(isAboutOpen: boolean) {
 export function handleViewMode(mode: string) {
   return { type: "HANDLE_VIEW_MODE", payload: mode };
 }
-export function handleMessage(message: string) {
-  return { type: "HANDLE_MESSAGE", payload: message };
-}
 
-export function handleMessageBox(isShow: boolean) {
-  return { type: "HANDLE_MESSAGE_BOX", payload: isShow };
-}
 export function handleSortDisplay(isSortDisplay: boolean) {
   return { type: "HANDLE_SORT_DISPLAY", payload: isSortDisplay };
 }
@@ -52,6 +41,15 @@ export function handleLoadingDialog(isShowLoading: boolean) {
 }
 export function handleNewDialog(isShowNew: boolean) {
   return { type: "HANDLE_SHOW_NEW", payload: isShowNew };
+}
+export function handleSelectBook(isSelectBook: boolean) {
+  return { type: "HANDLE_SELECT_BOOK", payload: isSelectBook };
+}
+export function handleSelectedBooks(selectedBooks: string[]) {
+  return { type: "HANDLE_SELECTED_BOOKS", payload: selectedBooks };
+}
+export function handleNewWarning(isNewWarning: boolean) {
+  return { type: "HANDLE_NEW_WARNING", payload: isNewWarning };
 }
 export function handleBookSort(isBookSort: boolean) {
   return { type: "HANDLE_BOOK_SORT", payload: isBookSort };
@@ -72,12 +70,10 @@ export function handleNoteSortCode(noteSortCode: {
 }) {
   return { type: "HANDLE_NOTE_SORT_CODE", payload: noteSortCode };
 }
-export function handleBookmarks(bookmarks: BookmarkModel[]) {
-  return { type: "HANDLE_BOOKMARKS", payload: bookmarks };
-}
+
 export function handleFetchBooks(isTrash = false) {
   return (dispatch: Dispatch) => {
-    localforage.getItem("books", async (err, value) => {
+    localforage.getItem("books", (err, value) => {
       let bookArr: any = value;
       let keyArr = AddTrash.getAllTrash();
       if (isTrash) {
@@ -96,7 +92,7 @@ export function handleFetchBookSortCode() {
 }
 export function handleFetchList() {
   return (dispatch: Dispatch) => {
-    let viewMode = OtherUtil.getReaderConfig("viewMode") || "card";
+    let viewMode = StorageUtil.getReaderConfig("viewMode") || "card";
     dispatch(handleViewMode(viewMode));
   };
 }

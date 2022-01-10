@@ -1,11 +1,6 @@
-//图书样式设置的下拉菜单页面
 import { connect } from "react-redux";
 import { withTranslation } from "react-i18next";
 import DropdownList from "./component";
-import {
-  handleMessageBox,
-  handleMessage,
-} from "../../../store/actions/manager";
 import { stateType } from "../../../store";
 
 const mapStateToProps = (state: stateType) => {
@@ -14,10 +9,7 @@ const mapStateToProps = (state: stateType) => {
     renderFunc: state.book.renderFunc,
   };
 };
-const actionCreator = {
-  handleMessageBox,
-  handleMessage,
-};
+const actionCreator = {};
 export default connect(
   mapStateToProps,
   actionCreator

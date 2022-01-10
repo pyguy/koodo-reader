@@ -1,4 +1,3 @@
-//提示更新的文字
 import React from "react";
 import "./updateInfo.css";
 import { TipDialogProps, TipDialogState } from "./interface";
@@ -50,12 +49,12 @@ class TipDialog extends React.Component<TipDialogProps, TipDialogState> {
           onClick={() => {
             this.handleClose();
           }}
-          style={{ marginTop: "10px" }}
+          style={{ marginTop: "-10px" }}
         >
           <Trans>Understand</Trans>
         </div>
         <div className="download-desk-animation">
-          <Lottie options={downloadOptions} height={220} width={300} />
+          <Lottie options={downloadOptions} height={200} width={300} />
         </div>
       </div>
     );

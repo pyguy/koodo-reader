@@ -1,21 +1,20 @@
-//添加图书到书架的对话框
 import { connect } from "react-redux";
-import {
-  handleMessageBox,
-  handleMessage,
-} from "../../../store/actions/manager";
 import {
   handleAddDialog,
   handleActionDialog,
-} from "../../../store/actions/book";
+  handleMode,
+  handleShelfIndex,handleSelectBook,
+  handleSelectedBooks,
+} from "../../../store/actions";
 import { stateType } from "../../../store";
 import { withTranslation } from "react-i18next";
 import AddDialog from "./component";
-import { handleMode, handleShelfIndex } from "../../../store/actions/sidebar";
 
 const mapStateToProps = (state: stateType) => {
   return {
     books: state.manager.books,
+    selectedBooks: state.manager.selectedBooks,
+    isSelectBook: state.manager.isSelectBook,
     isOpenDeleteDialog: state.book.isOpenDeleteDialog,
     currentBook: state.book.currentBook,
     bookmarks: state.reader.bookmarks,
@@ -25,11 +24,10 @@ const mapStateToProps = (state: stateType) => {
 };
 const actionCreator = {
   handleAddDialog,
-  handleActionDialog,
-  handleMessageBox,
-  handleMessage,
+  handleActionDialog,handleSelectBook,
   handleMode,
   handleShelfIndex,
+  handleSelectedBooks,
 };
 export default connect(
   mapStateToProps,

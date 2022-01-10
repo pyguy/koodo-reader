@@ -1,4 +1,3 @@
-//控制列表模式下的图书显示
 import { connect } from "react-redux";
 import {
   handleEditDialog,
@@ -6,17 +5,11 @@ import {
   handleAddDialog,
   handleReadingBook,
   handleDragItem,
-} from "../../store/actions/book";
-import { withTranslation } from "react-i18next";
-import {
-  handleMessageBox,
-  handleMessage,
   handleFetchBooks,
-} from "../../store/actions/manager";
-import {
-  handleDragToLove,
-  handleDragToDelete,
-} from "../../store/actions/sidebar";
+  handleSelectedBooks,
+} from "../../store/actions";
+import { withTranslation } from "react-i18next";
+
 import { stateType } from "../../store";
 import BookItem from "./component";
 const mapStateToProps = (state: stateType) => {
@@ -24,10 +17,10 @@ const mapStateToProps = (state: stateType) => {
     isReading: state.book.isReading,
     percentage: state.progressPanel.percentage,
     currentBook: state.book.currentBook,
-    isDragToLove: state.sidebar.isDragToLove,
-    isDragToDelete: state.sidebar.isDragToDelete,
     dragItem: state.book.dragItem,
     mode: state.sidebar.mode,
+    isSelectBook: state.manager.isSelectBook,
+    selectedBooks: state.manager.selectedBooks,
   };
 };
 const actionCreator = {
@@ -35,12 +28,9 @@ const actionCreator = {
   handleEditDialog,
   handleDeleteDialog,
   handleAddDialog,
-  handleMessageBox,
-  handleMessage,
   handleDragItem,
-  handleDragToLove,
-  handleDragToDelete,
   handleFetchBooks,
+  handleSelectedBooks,
 };
 export default connect(
   mapStateToProps,

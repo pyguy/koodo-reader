@@ -1,4 +1,3 @@
-//我的书摘，笔记的卡片
 import React from "react";
 import "./cardList.css";
 import NoteModel from "../../../model/Note";
@@ -10,8 +9,10 @@ import { withRouter } from "react-router-dom";
 import SortUtil from "../../../utils/readUtils/sortUtil";
 import { Redirect } from "react-router-dom";
 import NoteTag from "../../../components/noteTag";
-import BookUtil from "../../../utils/bookUtil";
-
+import BookUtil from "../../../utils/fileUtils/bookUtil";
+import toast from "react-hot-toast";
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
+import BookModel from "../../../model/Book";
 class CardList extends React.Component<CardListProps, CardListStates> {
   constructor(props: CardListProps) {
     super(props);
@@ -34,7 +35,7 @@ class CardList extends React.Component<CardListProps, CardListStates> {
   };
   handleJump = (cfi: string, bookKey: string, percentage: number) => {
     let { books } = this.props;
-    let book: any;
+    let book: BookModel | null = null;
     //根据bookKey获取指定的book和epub
     for (let i = 0; i < books.length; i++) {
       if (books[i].key === bookKey) {
@@ -43,12 +44,30 @@ class CardList extends React.Component<CardListProps, CardListStates> {
       }
     }
     if (!book) {
-      this.props.handleMessage("Book not exist");
-      this.props.handleMessageBox(true);
+      toast(this.props.t("Book not exist"));
       return;
     }
-    RecordLocation.recordCfi(bookKey, cfi, percentage);
-    BookUtil.RedirectBook(book);
+    if (book.format === "EPUB") {
+      RecordLocation.recordCfi(bookKey, cfi, percentage);
+    } else if (book.format === "PDF") {
+      let bookLocation = JSON.parse(cfi) || {};
+      RecordLocation.recordPDFLocation(book.md5, bookLocation);
+    } else {
+      let bookLocation = JSON.parse(cfi) || {};
+      RecordLocation.recordHtmlLocation(
+        bookKey,
+        bookLocation.text,
+        bookLocation.chapterTitle,
+        bookLocation.count,
+        bookLocation.percentage
+      );
+    }
+
+    if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
+      this.props.history.push(BookUtil.getBookUrl(book));
+    } else {
+      BookUtil.RedirectBook(book);
+    }
   };
   render() {
     let { cards } = this.props;
@@ -112,15 +131,16 @@ class CardList extends React.Component<CardListProps, CardListStates> {
                   {this.handleBookName(item.bookKey)}
                 </div>
                 <div className="card-list-item-chapter card-list-item-title">
-                  》<Trans>{item.chapter}</Trans>
+                  》{item.chapter}
                 </div>
               </div>
               <div
                 className="note-tags"
                 style={{
                   position: "absolute",
-                  bottom: "20px",
-                  height: "70px",
+                  bottom: "60px",
+                  height: "30px",
+                  overflow: "hidden",
                 }}
               >
                 <NoteTag
@@ -143,7 +163,7 @@ class CardList extends React.Component<CardListProps, CardListStates> {
                   {this.props.mode === "note" ? (
                     <Trans>{"More Notes"}</Trans>
                   ) : (
-                    <Trans>{"More Digests"}</Trans>
+                    <Trans>{"More Highlights"}</Trans>
                   )}
 
                   <span className="icon-dropdown icon-card-right"></span>

@@ -1,14 +1,12 @@
-//左下角的图标外链
 import { connect } from "react-redux";
 import SettingDialog from "./component";
 import { withTranslation } from "react-i18next";
 import {
   handleSetting,
-  handleMessageBox,
-  handleMessage,
   handleTipDialog,
   handleTip,
-} from "../../../store/actions/manager";
+  handleFetchBooks,
+} from "../../../store/actions";
 import { stateType } from "../../../store";
 
 const mapStateToProps = (state: stateType) => {
@@ -22,8 +20,7 @@ const actionCreator = {
   handleSetting,
   handleTipDialog,
   handleTip,
-  handleMessageBox,
-  handleMessage,
+  handleFetchBooks,
 };
 export default connect(
   mapStateToProps,

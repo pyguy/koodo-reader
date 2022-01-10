@@ -3,9 +3,9 @@ export interface UpdateInfoProps {
   currentBook: BookModel;
   books: BookModel[];
   isShowNew: boolean;
-  handleMessage: (message: string) => void;
-  handleMessageBox: (isShow: boolean) => void;
+  t: (title: string) => string;
   handleNewDialog: (isShowNew: boolean) => void;
+  handleNewWarning: (isNewWarning: boolean) => void;
 }
 export interface UpdateInfoState {
   updateLog: any;

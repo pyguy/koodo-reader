@@ -11,9 +11,8 @@ import Router from "./router/index";
 import StyleUtil from "./utils/readUtils/styleUtil";
 import { isElectron } from "react-device-detect";
 import { dropdownList } from "./constants/dropdownList";
-
-let coverLoading: any = document.querySelector(".loading-cover");
-coverLoading && coverLoading.parentNode.removeChild(coverLoading);
+import StorageUtil from "./utils/serviceUtils/storageUtil";
+import ga from "./utils/serviceUtils/analytics";
 
 ReactDOM.render(
   <Provider store={store}>
@@ -22,29 +21,22 @@ ReactDOM.render(
   document.getElementById("root")
 );
 
-if (isElectron) {
-  const { ipcRenderer } = window.require("electron");
-  const { ebtRenderer } = window.require("electron-baidu-tongji");
-  const BAIDU_SITE_ID = "358570be1bfc40e01db43adefade5ad5";
-  ebtRenderer(ipcRenderer, BAIDU_SITE_ID, Router);
+let coverLoading: any = document.querySelector(".loading-cover");
+coverLoading && coverLoading.parentNode.removeChild(coverLoading);
+
+if (isElectron && StorageUtil.getReaderConfig("isDisableAnalytics") !== "yes") {
+  ga.event("Client", "show", {
+    evLabel: "startup",
+  });
+} else if (StorageUtil.getReaderConfig("isDisableAnalytics") === "yes") {
+  ga.removeScript();
 }
-if (
-  isElectron &&
-  navigator.appVersion.indexOf("NT 6.1") === -1 &&
-  navigator.appVersion.indexOf("NT 5.1") === -1 &&
-  navigator.appVersion.indexOf("NT 6.0") === -1
-) {
-  const { ipcRenderer } = window.require("electron");
-  ipcRenderer.invoke("fonts-ready", "ping").then((result) => {
+if (isElectron) {
+  const fontList = window.require("font-list");
+  fontList.getFonts({ disableQuoting: true }).then((result) => {
+    if (!result || result.length === 0) return;
     dropdownList[0].option = result;
     dropdownList[0].option.push("Built-in font");
   });
 }
 StyleUtil.applyTheme();
-
-ReactDOM.render(
-  <Provider store={store}>
-    <Router />
-  </Provider>,
-  document.getElementById("root")
-);

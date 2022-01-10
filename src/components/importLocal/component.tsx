@@ -1,26 +1,25 @@
-//从本地导入书籍
 import React from "react";
 import "./importLocal.css";
 import BookModel from "../../model/Book";
 import localforage from "localforage";
-import { fetchMD5 } from "../../utils/md5Util";
-import { addEpub } from "../../utils/epubUtil";
+import { fetchMD5 } from "../../utils/fileUtils/md5Util";
+import { addEpub } from "../../utils/fileUtils/epubUtil";
 import { Trans } from "react-i18next";
 import Dropzone from "react-dropzone";
 import { Tooltip } from "react-tippy";
 import { ImportLocalProps, ImportLocalState } from "./interface";
 import RecordRecent from "../../utils/readUtils/recordRecent";
-import MobiParser from "../../utils/mobiParser";
-import iconv from "iconv-lite";
 import { isElectron } from "react-device-detect";
 import { withRouter } from "react-router-dom";
-import RecentBooks from "../../utils/readUtils/recordRecent";
-import BookUtil from "../../utils/bookUtil";
-import { generateEpub } from "../../utils/generateEpub";
-import { addPdf } from "../../utils/pdfUtil";
-import { fetchFileFromPath, fetchMD5FromPath } from "../../utils/fileUtil";
-
+import BookUtil from "../../utils/fileUtils/bookUtil";
+import {
+  fetchFileFromPath,
+  fetchMD5FromPath,
+} from "../../utils/fileUtils/fileUtil";
+import toast from "react-hot-toast";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 declare var window: any;
+let clickFilePath = "";
 
 class ImportLocal extends React.Component<ImportLocalProps, ImportLocalState> {
   constructor(props: ImportLocalProps) {
@@ -39,43 +38,85 @@ class ImportLocal extends React.Component<ImportLocalProps, ImportLocalState> {
           ipcRenderer.sendSync("storage-location", "ping")
         );
       }
-      var filePath = ipcRenderer.sendSync("get-file-data");
+
+      const filePath = ipcRenderer.sendSync("get-file-data");
       if (filePath && filePath !== ".") {
         this.handleFilePath(filePath);
       }
+      window.addEventListener(
+        "focus",
+        (event) => {
+          const _filePath = ipcRenderer.sendSync("get-file-data");
+          if (_filePath && _filePath !== ".") {
+            this.handleFilePath(_filePath);
+          }
+        },
+        false
+      );
     }
     window.addEventListener("resize", () => {
       this.setState({ width: document.body.clientWidth });
     });
   }
   handleFilePath = async (filePath: string) => {
+    clickFilePath = filePath;
     let md5 = await fetchMD5FromPath(filePath);
-    if ([...this.props.books, ...this.props.deletedBooks].length > 0) {
+    if ([...(this.props.books || []), ...this.props.deletedBooks].length > 0) {
       let isRepeat = false;
       let repeatBook: BookModel | null = null;
-      [...this.props.books, ...this.props.deletedBooks].forEach((item) => {
-        if (item.md5 === md5) {
-          isRepeat = true;
-          repeatBook = item;
+      [...(this.props.books || []), ...this.props.deletedBooks].forEach(
+        (item) => {
+          if (item.md5 === md5) {
+            isRepeat = true;
+            repeatBook = item;
+          }
         }
-      });
+      );
       if (isRepeat && repeatBook) {
         this.handleJump(repeatBook);
         return;
       }
     }
     const fileTemp = await fetchFileFromPath(filePath);
+
     this.setState({ isOpenFile: true }, async () => {
       await this.getMd5WithBrowser(fileTemp);
     });
   };
   handleJump = (book: BookModel) => {
-    RecentBooks.setRecent(book.key);
-    BookUtil.RedirectBook(book);
+    if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
+      this.props.history.push(BookUtil.getBookUrl(book));
+      this.props.handleReadingBook(book);
+    } else {
+      localStorage.setItem("tempBook", JSON.stringify(book));
+      BookUtil.RedirectBook(book);
+      this.props.history.push("/manager/home");
+    }
   };
-  handleAddBook = (book: BookModel) => {
+  handleAddBook = (book: BookModel, buffer: ArrayBuffer) => {
     return new Promise<void>((resolve, reject) => {
-      let bookArr = [...this.props.books, ...this.props.deletedBooks];
+      if (this.state.isOpenFile) {
+        StorageUtil.getReaderConfig("isImportPath") !== "yes" &&
+          StorageUtil.getReaderConfig("isPreventAdd") !== "yes" &&
+          BookUtil.addBook(book.key, buffer);
+        if (StorageUtil.getReaderConfig("isPreventAdd") === "yes") {
+          this.handleJump(book);
+          if (
+            StorageUtil.getReaderConfig("isOpenInMain") === "yes" &&
+            this.state.isOpenFile
+          ) {
+            this.setState({ isOpenFile: false });
+          }
+
+          resolve();
+          return;
+        }
+      } else {
+        StorageUtil.getReaderConfig("isImportPath") !== "yes" &&
+          BookUtil.addBook(book.key, buffer);
+      }
+
+      let bookArr = [...(this.props.books || []), ...this.props.deletedBooks];
       if (bookArr == null) {
         bookArr = [];
       }
@@ -86,10 +127,17 @@ class ImportLocal extends React.Component<ImportLocalProps, ImportLocalState> {
         .setItem("books", bookArr)
         .then(() => {
           this.props.handleFetchBooks();
-          this.props.handleMessage("Add Successfully");
-          this.props.handleMessageBox(true);
+
+          toast.success(this.props.t("Add Successfully"));
           setTimeout(() => {
             this.state.isOpenFile && this.handleJump(book);
+            if (
+              StorageUtil.getReaderConfig("isOpenInMain") === "yes" &&
+              this.state.isOpenFile
+            ) {
+              this.setState({ isOpenFile: false });
+              return;
+            }
             this.setState({ isOpenFile: false });
             this.props.history.push("/manager/home");
           }, 100);
@@ -106,6 +154,7 @@ class ImportLocal extends React.Component<ImportLocalProps, ImportLocalState> {
     return new Promise<void>(async (resolve, reject) => {
       const md5 = await fetchMD5(file);
       if (!md5) {
+        toast.error(this.props.t("Import Failed"));
         reject();
       } else {
         await this.handleBook(file, md5);
@@ -121,106 +170,35 @@ class ImportLocal extends React.Component<ImportLocalProps, ImportLocalState> {
     return new Promise<void>((resolve, reject) => {
       //md5重复不导入
       let isRepeat = false;
-      if ([...this.props.books, ...this.props.deletedBooks].length > 0) {
-        [...this.props.books, ...this.props.deletedBooks].forEach((item) => {
-          if (item.md5 === md5) {
-            isRepeat = true;
-            this.props.handleMessage("Duplicate Book");
-            this.props.handleMessageBox(true);
-            resolve();
+      if (
+        [...(this.props.books || []), ...this.props.deletedBooks].length > 0
+      ) {
+        [...(this.props.books || []), ...this.props.deletedBooks].forEach(
+          (item) => {
+            if (item.md5 === md5) {
+              isRepeat = true;
+              toast.error(this.props.t("Duplicate Book"));
+              resolve();
+            }
           }
-        });
+        );
       }
       //解析图书，获取图书数据
       if (!isRepeat) {
         let reader = new FileReader();
         reader.readAsArrayBuffer(file);
+
         reader.onload = async (e) => {
           if (!e.target) {
-            this.props.handleMessage("Import Failed");
-            this.props.handleMessageBox(true);
-
+            toast.error(this.props.t("Import Failed"));
             reject();
             throw new Error();
           }
-
-          if (extension === "pdf") {
-            result = await addPdf(
-              e.target.result as ArrayBuffer,
-              md5,
-              bookName,
-              file.size
-            );
-            if (!result) {
-              this.props.handleMessage("Import Failed");
-              this.props.handleMessageBox(true);
-
-              reject();
-              throw new Error();
-            } else {
-              await this.handleAddBook(result as BookModel);
-              BookUtil.addBook(
-                (result as BookModel).key,
-                e.target!.result as ArrayBuffer
-              );
-              resolve();
-            }
-          } else if (extension === "mobi" || extension === "azw3") {
-            let reader = new FileReader();
-            reader.onload = async (event) => {
-              const file_content = (event.target as any).result;
-              let mobiFile = new MobiParser(file_content);
-              let content: any = await mobiFile.render(isElectron);
-              if (typeof content === "object") {
-                result = BookUtil.generateBook(
-                  bookName,
-                  extension,
-                  md5,
-                  file.size
-                );
-                await this.handleAddBook(result);
-                BookUtil.addBook(result.key, file_content as ArrayBuffer);
-                resolve();
-              } else {
-                let buf = iconv.encode(content, "UTF-8");
-                let blobTemp: any = new Blob([buf], { type: "text/plain" });
-                let fileTemp = new File([blobTemp], file.name + ".txt", {
-                  lastModified: new Date().getTime(),
-                  type: blobTemp.type,
-                });
-                await this.getMd5WithBrowser(fileTemp);
-                resolve();
-              }
-            };
-            reader.readAsArrayBuffer(file);
-          } else if (extension === "txt") {
-            if (isElectron) {
-              let _result = await generateEpub(file);
-              if (_result) {
-                await this.getMd5WithBrowser(_result);
-                resolve();
-              } else {
-                this.props.handleMessage("Import Failed");
-                this.props.handleMessageBox(true);
-
-                reject();
-              }
-            } else {
-              let reader = new FileReader();
-              reader.readAsArrayBuffer(file);
-              reader.onload = async (event) => {
-                result = BookUtil.generateBook(
-                  bookName,
-                  extension,
-                  md5,
-                  file.size
-                );
-                await this.handleAddBook(result);
-                BookUtil.addBook(result.key, (event.target as any).result);
-                resolve();
-              };
-            }
-          } else if (
+          if (
+            extension === "pdf" ||
+            extension === "azw3" ||
+            extension === "mobi" ||
+            extension === "txt" ||
             extension === "djvu" ||
             extension === "docx" ||
             extension === "md" ||
@@ -237,31 +215,45 @@ class ImportLocal extends React.Component<ImportLocalProps, ImportLocalState> {
             let reader = new FileReader();
             reader.onload = async (event) => {
               const file_content = (event.target as any).result;
-              result = BookUtil.generateBook(
+              result = await BookUtil.generateBook(
                 bookName,
                 extension,
                 md5,
-                file.size
+                file.size,
+                file.path || clickFilePath,
+                file_content
               );
-              await this.handleAddBook(result);
-              BookUtil.addBook(result.key, file_content as ArrayBuffer);
+              clickFilePath = "";
+              if (!result) {
+                toast.error(
+                  this.props.t(
+                    "You may see this error when the book you're importing is not supported by Koodo Reader, try converting it with Calibre"
+                  )
+                );
+                reject();
+                return;
+              }
+              await this.handleAddBook(
+                result as BookModel,
+                file_content as ArrayBuffer
+              );
+
               resolve();
             };
             reader.readAsArrayBuffer(file);
           } else {
-            result = await addEpub(file, md5);
+            result = await addEpub(file, md5, clickFilePath);
+            clickFilePath = "";
             if (!result) {
-              this.props.handleMessage("Import Failed");
-              this.props.handleMessageBox(true);
-
+              toast.error(this.props.t("Import Failed"));
               reject();
               throw new Error();
             } else {
-              await this.handleAddBook(result as BookModel);
-              BookUtil.addBook(
-                (result as BookModel).key,
-                e.target!.result as ArrayBuffer
+              await this.handleAddBook(
+                result as BookModel,
+                e.target?.result as ArrayBuffer
               );
+
               resolve();
             }
           }

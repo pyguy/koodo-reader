@@ -11,20 +11,21 @@ export interface PopupMenuProps {
   notes: NoteModel[];
   color: number;
   rendition: any;
-  cfiRange: any;
-  contents: any;
+  // cfiRange: any;
   rect: any;
   noteKey: string;
+  pageWidth: number;
+  pageHeight: number;
+  chapterIndex: number;
+  chapter: string;
   handleNoteKey: (key: string) => void;
-  handleMessageBox: (isShow: boolean) => void;
-  handleMessage: (message: string) => void;
+  t: (title: string) => string;
   handleOpenMenu: (isOpenMenu: boolean) => void;
   handleMenuMode: (menu: string) => void;
   handleChangeDirection: (isChangeDirection: boolean) => void;
 }
 export interface PopupMenuStates {
   deleteKey: string;
-  cfiRange: string;
-  contents: any;
+  // cfiRange: string;
   rect: DOMRect | null;
 }

@@ -3,7 +3,7 @@ import "./sidebar.css";
 import { sideMenu } from "../../constants/sideMenu";
 import { SidebarProps, SidebarState } from "./interface";
 import { withRouter } from "react-router-dom";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import { Tooltip } from "react-tippy";
 import { isElectron } from "react-device-detect";
 
@@ -13,7 +13,8 @@ class Sidebar extends React.Component<SidebarProps, SidebarState> {
     this.state = {
       index: 0,
       hoverIndex: -1,
-      isCollapsed: OtherUtil.getReaderConfig("isCollapsed") === "yes" || false,
+      isCollapsed:
+        StorageUtil.getReaderConfig("isCollapsed") === "yes" || false,
     };
   }
   componentDidMount() {
@@ -25,6 +26,7 @@ class Sidebar extends React.Component<SidebarProps, SidebarState> {
   }
   handleSidebar = (mode: string, index: number) => {
     this.setState({ index: index });
+    this.props.handleSelectBook(false);
     this.props.history.push(`/manager/${mode}`);
     this.props.handleMode(mode);
     this.props.handleSearch(false);
@@ -36,7 +38,7 @@ class Sidebar extends React.Component<SidebarProps, SidebarState> {
   handleCollapse = (isCollapsed: boolean) => {
     this.setState({ isCollapsed });
     this.props.handleCollapse(isCollapsed);
-    OtherUtil.setReaderConfig("isCollapsed", isCollapsed ? "yes" : "no");
+    StorageUtil.setReaderConfig("isCollapsed", isCollapsed ? "yes" : "no");
   };
   handleJump = (url: string) => {
     isElectron
@@ -57,10 +59,6 @@ class Sidebar extends React.Component<SidebarProps, SidebarState> {
             id={`sidebar-${item.icon}`}
             onClick={() => {
               this.handleSidebar(item.mode, index);
-            }}
-            onDrop={() => {
-              index === 1 && this.props.handleDragToLove(true);
-              index === 5 && this.props.handleDragToDelete(true);
             }}
             onMouseEnter={() => {
               this.handleHover(index);
@@ -126,6 +124,7 @@ class Sidebar extends React.Component<SidebarProps, SidebarState> {
             )}
             position="top"
             trigger="mouseenter"
+            distance={25}
           >
             <span className="icon-menu sidebar-list"></span>
           </Tooltip>
@@ -133,7 +132,7 @@ class Sidebar extends React.Component<SidebarProps, SidebarState> {
 
         <img
           src={
-            OtherUtil.getReaderConfig("isDisplayDark") === "yes"
+            StorageUtil.getReaderConfig("isDisplayDark") === "yes"
               ? "./assets/label_light.png"
               : "./assets/label.png"
           }

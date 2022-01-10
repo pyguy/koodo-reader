@@ -1,17 +1,10 @@
 import { connect } from "react-redux";
 import {
-  handleMessageBox,
-  handleMessage,
-} from "../../../store/actions/manager";
-import {
   handleOpenMenu,
   handleMenuMode,
   handleChangeDirection,
-} from "../../../store/actions/viewArea";
-import {
-  handleFetchNotes,
-  handleOriginalText,
-} from "../../../store/actions/reader";
+} from "../../../store/actions";
+import { handleFetchNotes, handleOriginalText } from "../../../store/actions";
 import { stateType } from "../../../store";
 import { withTranslation } from "react-i18next";
 import PopupOption from "./component";
@@ -26,8 +19,6 @@ const mapStateToProps = (state: stateType) => {
   };
 };
 const actionCreator = {
-  handleMessageBox,
-  handleMessage,
   handleOpenMenu,
   handleMenuMode,
   handleFetchNotes,

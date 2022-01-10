@@ -869,18 +869,19 @@ See https://github.com/adobe-type-tools/cmap-resources
     <!-- outerContainer -->
     <div id="printContainer"></div>
     <script>
-      window.onbeforeunload = () => {
-        setReaderConfig("windowWidth", document.body.clientWidth);
-        setReaderConfig("windowHeight", document.body.clientHeight);
-        setReaderConfig("windowX", window.screenX + "");
-        setReaderConfig("windowY", window.screenY + "");
-      };
+      console.log(document.URL);
       var setReaderConfig = (key, value) => {
         let readerConfig =
           JSON.parse(localStorage.getItem("readerConfig")) || {};
         readerConfig[key] = value;
         localStorage.setItem("readerConfig", JSON.stringify(readerConfig));
       };
+      var getReaderConfig = (key) => {
+        let readerConfig =
+          JSON.parse(localStorage.getItem("readerConfig")) || {};
+        return readerConfig[key];
+      };
+      
     </script>
   </body>
 </html>

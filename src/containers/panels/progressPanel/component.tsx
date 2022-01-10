@@ -1,20 +1,10 @@
-//底部阅读进度面板
 import React from "react";
 import "./progressPanel.css";
 import RecordLocation from "../../../utils/readUtils/recordLocation";
 import { Trans } from "react-i18next";
 import { ProgressPanelProps, ProgressPanelState } from "./interface";
-import Lottie from "react-lottie";
-import animationSiri from "../../../assets/lotties/siri.json";
+import { Tooltip } from "react-tippy";
 
-const siriOptions = {
-  loop: true,
-  autoplay: true,
-  animationData: animationSiri,
-  rendererSettings: {
-    preserveAspectRatio: "xMidYMid slice",
-  },
-};
 class ProgressPanel extends React.Component<
   ProgressPanelProps,
   ProgressPanelState
@@ -23,7 +13,7 @@ class ProgressPanel extends React.Component<
     super(props);
     this.state = {
       displayPercentage: this.props.percentage ? this.props.percentage : 0,
-      currentChapter: "",
+
       currentPage: 0,
       totalPage: 0,
       currentChapterIndex: 0,
@@ -36,7 +26,8 @@ class ProgressPanel extends React.Component<
       nextProps.currentEpub.rendition.location &&
       this.props.currentEpub.rendition
     ) {
-      const currentLocation = this.props.currentEpub.rendition.currentLocation();
+      const currentLocation =
+        this.props.currentEpub.rendition.currentLocation();
       if (!currentLocation.start) {
         return;
       }
@@ -45,15 +36,6 @@ class ProgressPanel extends React.Component<
         totalPage: currentLocation.start.displayed.total,
         currentChapterIndex: currentLocation.start.index,
       });
-      let chapterHref = currentLocation.start.href;
-      let chapter = "Unknown Chapter";
-      let currentChapter = this.props.flattenChapters.filter(
-        (item: any) => item.href.split("#")[0] === chapterHref
-      )[0];
-      if (currentChapter) {
-        chapter = currentChapter.label.trim(" ");
-      }
-      this.setState({ currentChapter: chapter });
     }
     if (nextProps.currentBook.key) {
       this.props.handleFetchPercentage(this.props.currentBook);
@@ -130,11 +112,7 @@ class ProgressPanel extends React.Component<
   handleJumpPage = (event: any) => {};
   render() {
     if (!this.props.locations && this.props.currentEpub.rendition) {
-      return (
-        <div className="progress-panel">
-          <Lottie options={siriOptions} height={100} width={300} />
-        </div>
-      );
+      return <div className="progress-panel">Loading</div>;
     }
     return (
       <div className="progress-panel">
@@ -207,15 +185,28 @@ class ProgressPanel extends React.Component<
             this.previourChapter();
           }}
         >
-          <span className="icon-dropdown previous-chapter-icon"> </span>
+          <Tooltip
+            title={this.props.t("Prev Chapter")}
+            position="top"
+            trigger="mouseenter"
+          >
+            <span className="icon-dropdown previous-chapter-icon"> </span>
+          </Tooltip>
         </div>
+
         <div
           className="next-chapter"
           onClick={() => {
             this.nextChapter();
           }}
         >
-          <span className="icon-dropdown next-chapter-icon"></span>
+          <Tooltip
+            title={this.props.t("Next Chapter")}
+            position="top"
+            trigger="mouseenter"
+          >
+            <span className="icon-dropdown next-chapter-icon"></span>
+          </Tooltip>
         </div>
       </div>
     );

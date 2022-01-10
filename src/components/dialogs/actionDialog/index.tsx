@@ -5,12 +5,9 @@ import {
   handleAddDialog,
   handleActionDialog,
   handleReadingBook,
-} from "../../../store/actions/book";
-import {
-  handleMessageBox,
-  handleMessage,
   handleFetchBooks,
-} from "../../../store/actions/manager";
+} from "../../../store/actions";
+
 import { stateType } from "../../../store";
 import { withTranslation } from "react-i18next";
 import ActionDialog from "./component";
@@ -28,8 +25,6 @@ const actionCreator = {
   handleDeleteDialog,
   handleReadingBook,
   handleActionDialog,
-  handleMessageBox,
-  handleMessage,
   handleFetchBooks,
 };
 export default connect(

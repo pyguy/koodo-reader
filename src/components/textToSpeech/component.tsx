@@ -1,9 +1,8 @@
-//右侧阅读选项面板
 import React from "react";
 import { TextToSpeechProps, TextToSpeechState } from "./interface";
 import { Trans } from "react-i18next";
 import { speedList } from "../../constants/dropdownList";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 
 class TextToSpeech extends React.Component<
   TextToSpeechProps,
@@ -32,7 +31,7 @@ class TextToSpeech extends React.Component<
       this.setState({ isAudioOn: false });
     } else {
       const setSpeech = () => {
-        return new Promise(function (resolve, reject) {
+        return new Promise((resolve, reject) => {
           let synth = window.speechSynthesis;
           let id;
 
@@ -40,6 +39,8 @@ class TextToSpeech extends React.Component<
             if (synth.getVoices().length !== 0) {
               resolve(synth.getVoices());
               clearInterval(id);
+            } else {
+              this.setState({ isSupported: false });
             }
           }, 10);
         });
@@ -51,6 +52,8 @@ class TextToSpeech extends React.Component<
           this.setState({ isAudioOn: true }, () => {
             this.handleAudio();
             if (
+              document.querySelector("#text-speech-speed") &&
+              document.querySelector("#text-speech-voice") &&
               document.querySelector("#text-speech-speed")!.children[0] &&
               document.querySelector("#text-speech-voice")!.children[0]
             ) {
@@ -58,13 +61,13 @@ class TextToSpeech extends React.Component<
                 .querySelector("#text-speech-speed")!
                 .children[
                   speedList.option.indexOf(
-                    OtherUtil.getReaderConfig("voiceSpeed") || "1"
+                    StorageUtil.getReaderConfig("voiceSpeed") || "1"
                   )
                 ].setAttribute("selected", "selected");
               document
                 .querySelector("#text-speech-voice")!
                 .children[
-                  OtherUtil.getReaderConfig("voiceIndex") || 0
+                  StorageUtil.getReaderConfig("voiceIndex") || 0
                 ].setAttribute("selected", "selected");
             }
           });
@@ -92,8 +95,8 @@ class TextToSpeech extends React.Component<
         .replace(/\f/g, "");
       this.handleSpeech(
         text,
-        OtherUtil.getReaderConfig("voiceIndex") || 0,
-        OtherUtil.getReaderConfig("voiceSpeed") || 1
+        StorageUtil.getReaderConfig("voiceIndex") || 0,
+        StorageUtil.getReaderConfig("voiceSpeed") || 1
       );
     });
   };
@@ -106,11 +109,11 @@ class TextToSpeech extends React.Component<
     msg.onerror = (err) => {
       console.log(err);
     };
+
     msg.onend = (event) => {
       if (!(this.state.isAudioOn && this.props.isReading)) {
         return;
       }
-
       this.props.currentEpub.rendition.next().then(() => {
         this.handleAudio();
       });
@@ -130,18 +133,9 @@ class TextToSpeech extends React.Component<
               <span
                 className="single-control-switch"
                 onClick={() => {
-                  if (this.props.locations) {
-                    this.handleChangeAudio();
-                  } else {
-                    this.props.handleMessage("Audio is not ready yet");
-                    this.props.handleMessageBox(true);
-                  }
+                  this.handleChangeAudio();
                 }}
-                style={
-                  this.props.locations && this.state.isAudioOn
-                    ? {}
-                    : { opacity: 0.6 }
-                }
+                style={this.state.isAudioOn ? {} : { opacity: 0.6 }}
               >
                 <span
                   className="single-control-button"
@@ -175,7 +169,10 @@ class TextToSpeech extends React.Component<
                   className="lang-setting-dropdown"
                   id="text-speech-voice"
                   onChange={(event) => {
-                    OtherUtil.setReaderConfig("voiceIndex", event.target.value);
+                    StorageUtil.setReaderConfig(
+                      "voiceIndex",
+                      event.target.value
+                    );
                     window.speechSynthesis.cancel();
                   }}
                 >
@@ -200,7 +197,10 @@ class TextToSpeech extends React.Component<
                   id="text-speech-speed"
                   className="lang-setting-dropdown"
                   onChange={(event) => {
-                    OtherUtil.setReaderConfig("voiceSpeed", event.target.value);
+                    StorageUtil.setReaderConfig(
+                      "voiceSpeed",
+                      event.target.value
+                    );
                     window.speechSynthesis.cancel();
                   }}
                 >

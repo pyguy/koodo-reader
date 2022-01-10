@@ -5,10 +5,10 @@ import { Trans } from "react-i18next";
 import { getParamsFromUrl } from "../../utils/syncUtils/common";
 import copy from "copy-text-to-clipboard";
 import { withRouter } from "react-router-dom";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import Lottie from "react-lottie";
 import animationSuccess from "../../assets/lotties/success.json";
-
+import toast, { Toaster } from "react-hot-toast";
 const successOptions = {
   loop: false,
   autoplay: true,
@@ -34,8 +34,7 @@ class Redirect extends React.Component<RedirectProps, RedirectState> {
     alert("数据恢复成功");
   };
   showMessage = (message: string) => {
-    this.props.handleMessage(message);
-    this.props.handleMessageBox(true);
+    toast(this.props.t(message));
   };
   componentDidMount() {
     //判断是否是获取token后的回调页面
@@ -101,15 +100,6 @@ class Redirect extends React.Component<RedirectProps, RedirectState> {
 
     return (
       <div className="manager">
-        <img
-          src={
-            process.env.NODE_ENV === "production"
-              ? "./assets/logo.png"
-              : "../../assets/logo.png"
-          }
-          alt=""
-          className="logo"
-        />
         <div className="empty-page-info-container" style={{ margin: 100 }}>
           <div className="empty-page-info-main">
             <Trans>It seems like you're lost</Trans>
@@ -126,13 +116,14 @@ class Redirect extends React.Component<RedirectProps, RedirectState> {
         </div>
         <img
           src={
-            OtherUtil.getReaderConfig("isDisplayDark") === "yes"
+            StorageUtil.getReaderConfig("isDisplayDark") === "yes"
               ? "./assets/empty_light.svg"
               : "./assets/empty.svg"
           }
           alt=""
           className="empty-page-illustration"
         />
+        <Toaster />
       </div>
     );
   }

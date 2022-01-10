@@ -1,16 +1,16 @@
 import React from "react";
-import ViewArea from "../epubViewer";
-import Background from "../background";
+import EpubViewer from "../epubViewer";
+import PageWidget from "../pageWidget";
 import SettingPanel from "../panels/settingPanel";
 import NavigationPanel from "../panels/navigationPanel";
 import OperationPanel from "../panels/operationPanel";
-import MessageBox from "../messageBox";
 import ProgressPanel from "../panels/progressPanel";
 import { ReaderProps, ReaderState } from "./interface";
-import { MouseEvent } from "../../utils/mouseEvent";
-import OtherUtil from "../../utils/otherUtil";
+import { EpubMouseEvent } from "../../utils/serviceUtils/mouseEvent";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import ReadingTime from "../../utils/readUtils/readingTime";
-
+import Background from "../../components/background";
+let lock = false;
 class Reader extends React.Component<ReaderProps, ReaderState> {
   messageTimer!: NodeJS.Timeout;
   tickTimer!: NodeJS.Timeout;
@@ -20,18 +20,22 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
     super(props);
     this.state = {
       isOpenRightPanel:
-        OtherUtil.getReaderConfig("isSettingLocked") === "yes" ? true : false,
+        StorageUtil.getReaderConfig("isSettingLocked") === "yes" ? true : false,
       isOpenTopPanel: false,
       isOpenBottomPanel: false,
       isOpenLeftPanel:
-        OtherUtil.getReaderConfig("isNavLocked") === "yes" ? true : false,
-      isMessage: false,
+        StorageUtil.getReaderConfig("isNavLocked") === "yes" ? true : false,
       rendition: null,
-      scale: OtherUtil.getReaderConfig("scale") || 1,
-      margin: parseInt(OtherUtil.getReaderConfig("margin")) || 30,
+      hoverPanel: "",
+      scale: StorageUtil.getReaderConfig("scale") || 1,
+      margin: parseInt(StorageUtil.getReaderConfig("margin")) || 30,
       time: ReadingTime.getTime(this.props.currentBook.key),
-      isTouch: OtherUtil.getReaderConfig("isTouch") === "yes",
-      readerMode: OtherUtil.getReaderConfig("readerMode") || "double",
+      isTouch: StorageUtil.getReaderConfig("isTouch") === "yes",
+      isPreventTrigger:
+        StorageUtil.getReaderConfig("isPreventTrigger") === "yes",
+      readerMode: StorageUtil.getReaderConfig("readerMode") || "double",
+      isHideBackground:
+        StorageUtil.getReaderConfig("isHideBackground") === "yes",
     };
   }
   componentWillMount() {
@@ -41,44 +45,29 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
     this.props.handleFetchBooks();
     this.props.handleFetchChapters(this.props.currentEpub);
   }
-  UNSAFE_componentWillReceiveProps(nextProps: ReaderProps) {
-    this.setState({
-      isMessage: nextProps.isMessage,
-    });
 
-    //控制消息提示两秒之后消失
-    if (nextProps.isMessage) {
-      this.messageTimer = setTimeout(() => {
-        this.props.handleMessageBox(false);
-        this.setState({ isMessage: false });
-      }, 2000);
-    }
-  }
   componentDidMount() {
     this.handleRenderBook();
     this.props.handleRenderFunc(this.handleRenderBook);
+    var doit;
     window.addEventListener("resize", () => {
-      this.handleRenderBook();
+      clearTimeout(doit);
+      doit = setTimeout(this.handleRenderBook, 100);
     });
-    this.tickTimer = setInterval(() => {
+    this.tickTimer = global.setInterval(() => {
       let time = this.state.time;
       time += 1;
-      let page = document.querySelector("#page-area");
+      this.setState({ time });
+
       //解决快速翻页过程中图书消失的bug
       let renderedBook = document.querySelector(".epub-view");
       if (
         renderedBook &&
         !renderedBook.innerHTML &&
-        this.state.readerMode !== "continuous"
+        this.state.readerMode !== "scroll"
       ) {
         this.handleRenderBook();
       }
-      let ele = page!.getElementsByClassName("epub-container")[0];
-      if (page!.getElementsByClassName("epub-container").length > 1 && ele) {
-        ele.parentNode?.removeChild(ele);
-      }
-      this.setState({ time });
-      this.handleRecord();
     }, 1000);
   }
   componentWillUnmount() {
@@ -87,34 +76,27 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
   handleRenderBook = () => {
     let page = document.querySelector("#page-area");
     let epub = this.props.currentEpub;
-    if (page!.innerHTML) {
-      page!.innerHTML = "";
+    if (!page) return;
+    if (page.innerHTML) {
+      page.innerHTML = "";
     }
 
     this.setState({ rendition: null }, () => {
       (window as any).rangy.init(); // 初始化
       this.rendition = epub.renderTo(page, {
-        manager:
-          this.state.readerMode === "continuous" ? "continuous" : "default",
-        flow: this.state.readerMode === "continuous" ? "scrolled" : "auto",
+        manager: "default",
+        flow: this.state.readerMode === "scroll" ? "scrolled" : "auto",
         width: "100%",
         height: "100%",
         snap: true,
         spread:
-          OtherUtil.getReaderConfig("readerMode") === "single" ? "none" : "",
+          StorageUtil.getReaderConfig("readerMode") === "single" ? "none" : "",
       });
       this.setState({ rendition: this.rendition });
-      this.state.readerMode !== "continuous" && MouseEvent(this.rendition); // 绑定事件
+      EpubMouseEvent(this.rendition, this.state.readerMode); // 绑定事件
     });
   };
-  handleRecord() {
-    OtherUtil.setReaderConfig("isFullScreen", "no");
 
-    OtherUtil.setReaderConfig("windowWidth", document.body.clientWidth + "");
-    OtherUtil.setReaderConfig("windowHeight", document.body.clientHeight + "");
-    OtherUtil.setReaderConfig("windowX", window.screenX + "");
-    OtherUtil.setReaderConfig("windowY", window.screenY + "");
-  }
   //进入阅读器
   handleEnterReader = (position: string) => {
     //控制上下左右的菜单的显示
@@ -148,7 +130,7 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
     //控制上下左右的菜单的显示
     switch (position) {
       case "right":
-        if (OtherUtil.getReaderConfig("isSettingLocked") === "yes") {
+        if (StorageUtil.getReaderConfig("isSettingLocked") === "yes") {
           break;
         } else {
           this.setState({ isOpenRightPanel: false });
@@ -156,7 +138,7 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
         }
 
       case "left":
-        if (OtherUtil.getReaderConfig("isNavLocked") === "yes") {
+        if (StorageUtil.getReaderConfig("isNavLocked") === "yes") {
           break;
         } else {
           this.setState({ isOpenLeftPanel: false });
@@ -173,10 +155,22 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
     }
   };
   nextPage = () => {
+    if (lock) return;
     this.state.rendition.next();
+    lock = true;
+    setTimeout(function () {
+      lock = false;
+    }, 400);
+    return false;
   };
   prevPage = () => {
+    if (lock) return;
     this.state.rendition.prev();
+    lock = true;
+    setTimeout(function () {
+      lock = false;
+    }, 400);
+    return false;
   };
   render() {
     const renditionProps = {
@@ -191,85 +185,134 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
     };
     return (
       <div className="viewer">
-        <div
-          className="previous-chapter-single-container"
-          onClick={() => {
-            this.prevPage();
-          }}
-        >
-          <span className="icon-dropdown previous-chapter-single"></span>
-        </div>
-        <div
-          className="next-chapter-single-container"
-          onClick={() => {
-            this.nextPage();
-          }}
-        >
-          <span className="icon-dropdown next-chapter-single"></span>
-        </div>
-        <div
-          className="reader-setting-icon-container"
-          onClick={() => {
-            this.handleEnterReader("left");
-            this.handleEnterReader("right");
-            this.handleEnterReader("bottom");
-            this.handleEnterReader("top");
-          }}
-        >
-          <span className="icon-grid reader-setting-icon"></span>
-        </div>
-        {this.state.isMessage ? <MessageBox /> : null}
+        {StorageUtil.getReaderConfig("isHidePageButton") !== "yes" && (
+          <>
+            <div
+              className="previous-chapter-single-container"
+              onClick={() => {
+                this.prevPage();
+              }}
+            >
+              <span className="icon-dropdown previous-chapter-single"></span>
+            </div>
+            <div
+              className="next-chapter-single-container"
+              onClick={() => {
+                this.nextPage();
+              }}
+            >
+              <span className="icon-dropdown next-chapter-single"></span>
+            </div>
+          </>
+        )}
+        {StorageUtil.getReaderConfig("isHideMenuButton") !== "yes" && (
+          <div
+            className="reader-setting-icon-container"
+            onClick={() => {
+              this.handleEnterReader("left");
+              this.handleEnterReader("right");
+              this.handleEnterReader("bottom");
+              this.handleEnterReader("top");
+            }}
+          >
+            <span className="icon-grid reader-setting-icon"></span>
+          </div>
+        )}
         <div
           className="left-panel"
           onMouseEnter={() => {
-            if (this.state.isTouch || this.state.isOpenLeftPanel) {
+            if (
+              this.state.isTouch ||
+              this.state.isOpenLeftPanel ||
+              this.state.isPreventTrigger
+            ) {
+              this.setState({ hoverPanel: "left" });
               return;
             }
             this.handleEnterReader("left");
           }}
+          onMouseLeave={() => {
+            this.setState({ hoverPanel: "" });
+          }}
+          style={this.state.hoverPanel === "left" ? { opacity: 0.5 } : {}}
           onClick={() => {
             this.handleEnterReader("left");
           }}
-        ></div>
+        >
+          <span className="icon-grid panel-icon"></span>
+        </div>
         <div
           className="right-panel"
           onMouseEnter={() => {
-            if (this.state.isTouch || this.state.isOpenRightPanel) {
+            if (
+              this.state.isTouch ||
+              this.state.isOpenRightPanel ||
+              this.state.isPreventTrigger
+            ) {
+              this.setState({ hoverPanel: "right" });
               return;
             }
             this.handleEnterReader("right");
           }}
+          onMouseLeave={() => {
+            this.setState({ hoverPanel: "" });
+          }}
+          style={this.state.hoverPanel === "right" ? { opacity: 0.5 } : {}}
           onClick={() => {
             this.handleEnterReader("right");
           }}
-        ></div>
+        >
+          <span className="icon-grid panel-icon"></span>
+        </div>
         <div
           className="top-panel"
           onMouseEnter={() => {
-            if (this.state.isTouch || this.state.isOpenTopPanel) {
+            if (
+              this.state.isTouch ||
+              this.state.isOpenTopPanel ||
+              this.state.isPreventTrigger
+            ) {
+              this.setState({ hoverPanel: "top" });
               return;
             }
             this.handleEnterReader("top");
           }}
+          onMouseLeave={() => {
+            this.setState({ hoverPanel: "" });
+          }}
+          style={this.state.hoverPanel === "top" ? { opacity: 0.5 } : {}}
           onClick={() => {
             this.handleEnterReader("top");
           }}
-        ></div>
+        >
+          <span className="icon-grid panel-icon"></span>
+        </div>
         <div
           className="bottom-panel"
           onMouseEnter={() => {
-            if (this.state.isTouch || this.state.isOpenBottomPanel) {
+            if (
+              this.state.isTouch ||
+              this.state.isOpenBottomPanel ||
+              this.state.isPreventTrigger
+            ) {
+              this.setState({ hoverPanel: "bottom" });
               return;
             }
             this.handleEnterReader("bottom");
           }}
+          onMouseLeave={() => {
+            this.setState({ hoverPanel: "" });
+          }}
+          style={this.state.hoverPanel === "bottom" ? { opacity: 0.5 } : {}}
           onClick={() => {
             this.handleEnterReader("bottom");
           }}
-        ></div>
+        >
+          <span className="icon-grid panel-icon"></span>
+        </div>
 
         {this.state.rendition && this.props.currentEpub.rendition && (
-          <ViewArea {...renditionProps} />
+          <EpubViewer {...renditionProps} />
         )}
         <div
           className="setting-panel-container"
@@ -337,7 +380,7 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
           style={
             document.body.clientWidth < 570
               ? { left: 0, right: 0 }
-              : this.state.readerMode === "continuous"
+              : this.state.readerMode === "scroll"
               ? {
                   left: `calc(50vw - ${270 * parseFloat(this.state.scale)}px)`,
                   right: `calc(50vw - ${270 * parseFloat(this.state.scale)}px)`,
@@ -356,9 +399,12 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
                 }
               : {}
           }
-        ></div>
+        >
+          <span className="icon-grid reader-setting-icon"></span>
+        </div>
+        {this.state.isHideBackground ? null : <Background />}
 
-        <Background {...{ time: this.state.time }} />
+        <PageWidget {...{ time: this.state.time }} />
       </div>
     );
   }

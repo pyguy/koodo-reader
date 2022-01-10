@@ -1,10 +1,9 @@
-//为空页面
 import React from "react";
 import "./emptyPage.css";
 import { emptyList } from "../../constants/emptyList";
 import { Trans } from "react-i18next";
 import { EmptyPageProps, EmptyPageState } from "./interface";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 
 class EmptyPage extends React.Component<EmptyPageProps, EmptyPageState> {
   render() {
@@ -43,7 +42,7 @@ class EmptyPage extends React.Component<EmptyPageProps, EmptyPageState> {
         >
           <img
             src={
-              OtherUtil.getReaderConfig("isDisplayDark") === "yes"
+              StorageUtil.getReaderConfig("isDisplayDark") === "yes"
                 ? "./assets/empty_light.svg"
                 : "./assets/empty.svg"
             }

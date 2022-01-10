@@ -1,4 +1,3 @@
-//选中文字后的弹窗，四个按钮
 import React from "react";
 import "./popupOption.css";
 import localforage from "localforage";
@@ -8,21 +7,15 @@ import ColorOption from "../../colorOption";
 import RecordLocation from "../../../utils/readUtils/recordLocation";
 import { Tooltip } from "react-tippy";
 import { popupList } from "../../../constants/popupList";
-import OtherUtil from "../../../utils/otherUtil";
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import { isElectron } from "react-device-detect";
+import toast from "react-hot-toast";
+import { getSelection } from "../../../utils/serviceUtils/mouseEvent";
+import copy from "copy-text-to-clipboard";
+import { getHightlightCoords } from "../../../utils/fileUtils/pdfUtil";
+import { getIframeDoc } from "../../../utils/serviceUtils/docUtil";
 
 declare var window: any;
-const getSelection = () => {
-  let iframe = document.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) return;
-  let sel = doc.getSelection();
-  if (!sel) return;
-  let text = sel.toString();
-  text = text && text.trim();
-  return text;
-};
 
 class PopupOption extends React.Component<PopupOptionProps> {
   handleNote = () => {
@@ -31,29 +24,31 @@ class PopupOption extends React.Component<PopupOptionProps> {
     this.handleEdge();
   };
   handleEdge = () => {
+    let page: any = { offsetLeft: 0 };
+    if (this.props.currentBook.format !== "PDF") {
+      page = document.getElementById("page-area");
+      if (!page.clientWidth) return;
+    }
     let popupMenu: any = document.querySelector(".popup-menu-container");
     let posX = popupMenu?.style.left;
     let posY = popupMenu?.style.top;
     posX = parseInt(posX.substr(0, posX.length - 2));
     posY = parseInt(posY.substr(0, posY.length - 2));
-    let rightEdge = this.props.currentEpub.rendition._layout.width - 310;
+    let rightEdge = this.props.pageWidth - 310 + page.offsetLeft * 2;
+
     if (posX > rightEdge) {
       popupMenu.setAttribute("style", `left:${rightEdge}px;top:${posY}px`);
     }
   };
   handleCopy = () => {
-    let iframe = document.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) return;
-    let text = doc.execCommand("copy", false);
-    !text
-      ? console.log("failed to copy text to clipboard")
-      : console.log("copied!");
+    let text = getSelection();
+    if (!text) return;
+    copy(text);
     this.props.handleOpenMenu(false);
-    doc.getSelection()!.empty();
-    this.props.handleMessage("Copy Successfully");
-    this.props.handleMessageBox(true);
+    let doc = getIframeDoc();
+    if (!doc) return;
+    doc.getSelection()?.empty();
+    toast.success(this.props.t("Copy Successfully"));
   };
   handleTrans = () => {
     this.props.handleMenuMode("trans");
@@ -62,32 +57,40 @@ class PopupOption extends React.Component<PopupOptionProps> {
   };
   handleDigest = () => {
     let bookKey = this.props.currentBook.key;
-    const currentLocation = this.props.currentEpub.rendition.currentLocation();
-    let chapterHref = currentLocation.start.href;
-    let chapterIndex = currentLocation.start.index;
-    let chapter = "Unknown Chapter";
-    let currentChapter = this.props.flattenChapters.filter(
-      (item: any) => item.href.split("#")[0] === chapterHref
-    )[0];
-    if (currentChapter) {
-      chapter = currentChapter.label.trim(" ");
+    let cfi = "";
+    if (this.props.currentBook.format === "EPUB") {
+      cfi = RecordLocation.getCfi(this.props.currentBook.key).cfi;
+    } else if (this.props.currentBook.format === "PDF") {
+      cfi = JSON.stringify(
+        RecordLocation.getPDFLocation(this.props.currentBook.md5)
+      );
+    } else {
+      cfi = JSON.stringify(
+        RecordLocation.getHtmlLocation(this.props.currentBook.key)
+      );
     }
-    const cfi = RecordLocation.getCfi(this.props.currentBook.key).cfi;
-
     let percentage = RecordLocation.getCfi(this.props.currentBook.key)
       .percentage
       ? RecordLocation.getCfi(this.props.currentBook.key).percentage
       : 0;
     let color = this.props.color;
     let notes = "";
-    let iframe = document.getElementsByTagName("iframe")[0];
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
     if (!iframe) return;
     let doc = iframe.contentDocument;
     if (!doc) return;
-    let charRange = window.rangy
-      .getSelection(iframe)
-      .saveCharacterRanges(doc.body)[0];
-    let range = JSON.stringify(charRange);
+    let charRange;
+    if (this.props.currentBook.format !== "PDF") {
+      charRange = window.rangy
+        .getSelection(iframe)
+        .saveCharacterRanges(doc.body)[0];
+    }
+    let range =
+      this.props.currentBook.format === "PDF"
+        ? JSON.stringify(getHightlightCoords())
+        : JSON.stringify(charRange);
     let text = doc.getSelection()?.toString();
     if (!text) return;
     text = text.replace(/\s\s/g, "");
@@ -97,8 +100,8 @@ class PopupOption extends React.Component<PopupOptionProps> {
     text = text.replace(/\f/g, "");
     let digest = new Note(
       bookKey,
-      chapter,
-      chapterIndex,
+      this.props.chapter,
+      this.props.chapterIndex,
       text,
       cfi,
       range,
@@ -111,11 +114,23 @@ class PopupOption extends React.Component<PopupOptionProps> {
     noteArr.push(digest);
     localforage.setItem("notes", noteArr).then(() => {
       this.props.handleOpenMenu(false);
-      this.props.handleMessage("Add Successfully");
-      this.props.handleMessageBox(true);
+      toast.success(this.props.t("Add Successfully"));
       this.props.handleFetchNotes();
       this.props.handleMenuMode("highlight");
     });
+    // let classes = [
+    //   "color-0",
+    //   "color-1",
+    //   "color-2",
+    //   "color-3",
+    //   "line-0",
+    //   "line-1",
+    //   "line-2",
+    //   "line-3",
+    // ];
+    // if (this.props.currentBook.format === "PDF") {
+    //   showHighlight(JSON.parse(range), classes[color]);
+    // }
   };
   handleJump = (url: string) => {
     isElectron
@@ -123,7 +138,7 @@ class PopupOption extends React.Component<PopupOptionProps> {
       : window.open(url);
   };
   handleSearchInternet = () => {
-    switch (OtherUtil.getReaderConfig("searchEngine")) {
+    switch (StorageUtil.getReaderConfig("searchEngine")) {
       case "google":
         this.handleJump("https://www.google.com/search?q=" + getSelection());
         break;
@@ -142,6 +157,12 @@ class PopupOption extends React.Component<PopupOptionProps> {
       case "yahoo":
         this.handleJump("https://search.yahoo.com/search?p=" + getSelection());
         break;
+      case "baike":
+        this.handleJump("https://baike.baidu.com/item/" + getSelection());
+        break;
+      case "wiki":
+        this.handleJump("https://wikipedia.org/wiki/" + getSelection());
+        break;
       default:
         this.handleJump(
           navigator.language === "zh-CN"
@@ -158,7 +179,8 @@ class PopupOption extends React.Component<PopupOptionProps> {
       bubbles: true,
       cancelable: true,
     });
-    leftPanel!.dispatchEvent(clickEvent);
+    if (!leftPanel) return;
+    leftPanel.dispatchEvent(clickEvent);
     const focusEvent = new MouseEvent("focus", {
       view: window,
       bubbles: true,
@@ -175,6 +197,7 @@ class PopupOption extends React.Component<PopupOptionProps> {
       keyCode: 13,
     } as any);
     searchBox.dispatchEvent(keyEvent);
+    this.props.handleOpenMenu(false);
   };
 
   handleSpeak = () => {

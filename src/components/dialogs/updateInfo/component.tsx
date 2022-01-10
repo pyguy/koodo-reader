@@ -1,4 +1,3 @@
-//提示更新的文字
 import React from "react";
 import "./updateInfo.css";
 import { UpdateInfoProps, UpdateInfoState } from "./interface";
@@ -8,8 +7,7 @@ import axios from "axios";
 import Lottie from "react-lottie";
 import animationNew from "../../../assets/lotties/new.json";
 import animationSuccess from "../../../assets/lotties/success.json";
-import copy from "copy-text-to-clipboard";
-import OtherUtil from "../../../utils/otherUtil";
+import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import { isElectron } from "react-device-detect";
 const newOptions = {
   loop: false,
@@ -42,20 +40,29 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
       axios
         .get(`https://koodo.960960.xyz/api/update?name=${navigator.language}`)
         .then((res) => {
-          console.log(res);
           const newVersion = res.data.log.version;
-          setTimeout(() => {
-            if (version !== newVersion) {
-              this.setState({ updateLog: res.data.log });
+          console.log(
+            res,
+            version,
+            newVersion,
+            version.localeCompare(newVersion)
+          );
 
-              this.props.handleNewDialog(true);
+          setTimeout(() => {
+            if (version.localeCompare(newVersion) < 0) {
+              if (StorageUtil.getReaderConfig("isDisableUpdate") !== "yes") {
+                this.setState({ updateLog: res.data.log });
+                this.props.handleNewDialog(true);
+              } else {
+                this.props.handleNewWarning(true);
+              }
             } else if (
-              OtherUtil.getReaderConfig("version") !== newVersion &&
-              OtherUtil.getReaderConfig("isFirst")
+              StorageUtil.getReaderConfig("version") !== newVersion &&
+              StorageUtil.getReaderConfig("isFirst")
             ) {
               this.setState({ isUpdated: true });
               this.props.handleNewDialog(true);
-              OtherUtil.setReaderConfig("version", newVersion);
+              StorageUtil.setReaderConfig("version", newVersion);
             }
           }, 500);
         })
@@ -79,8 +86,8 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
         .require("electron")
         .shell.openExternal(
           this.state.isUpdated
-            ? "https://koodo.960960.xyz/log"
-            : "https://koodo.960960.xyz/download"
+            ? "https://koodo.960960.xyz/en/log"
+            : "https://koodo.960960.xyz/en"
         );
   };
   handleClose = () => {
@@ -155,17 +162,6 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
                 </div>
                 {this.state.updateLog && (
                   <>
-                    <div
-                      className="new-version-copy"
-                      onClick={() => {
-                        copy("https://koodo.960960.xyz/download");
-                        this.props.handleMessage("Copy Successfully");
-                        this.props.handleMessageBox(true);
-                      }}
-                    >
-                      <Trans>Copy Link</Trans>
-                    </div>
-
                     <p className="update-dialog-new-title">
                       <Trans>What's New</Trans>
                     </p>

@@ -1,10 +1,5 @@
-//左下角的图标外链
 import { connect } from "react-redux";
-import {
-  handleMessageBox,
-  handleMessage,
-  handleNewDialog,
-} from "../../../store/actions/manager";
+import { handleNewDialog, handleNewWarning } from "../../../store/actions";
 import UpdateInfo from "./component";
 import { withTranslation } from "react-i18next";
 import { stateType } from "../../../store";
@@ -17,9 +12,8 @@ const mapStateToProps = (state: stateType) => {
   };
 };
 const actionCreator = {
-  handleMessageBox,
-  handleMessage,
   handleNewDialog,
+  handleNewWarning,
 };
 export default connect(
   mapStateToProps,

@@ -1,13 +1,14 @@
 import { connect } from "react-redux";
 import { stateType } from "../../store";
 import ViewArea from "./component";
-import { handlePercentage } from "../../store/actions/progressPanel";
 import {
+  handlePercentage,
   handleOpenMenu,
   handleShowBookmark,
-} from "../../store/actions/viewArea";
-import { handleReadingEpub } from "../../store/actions/book";
+  handleReadingEpub,
+} from "../../store/actions";
 import "./index.css";
+import { withTranslation } from "react-i18next";
 
 const mapStateToProps = (state: stateType) => {
   return {
@@ -15,6 +16,7 @@ const mapStateToProps = (state: stateType) => {
     currentEpub: state.book.currentEpub,
     currentBook: state.book.currentBook,
     locations: state.progressPanel.locations,
+    flattenChapters: state.reader.flattenChapters,
     bookmarks: state.reader.bookmarks,
     isShowBookmark: state.viewArea.isShowBookmark,
   };
@@ -26,4 +28,7 @@ const actionCreator = {
   handleReadingEpub,
 };
 
-export default connect(mapStateToProps, actionCreator)(ViewArea);
+export default connect(
+  mapStateToProps,
+  actionCreator
+)(withTranslation()(ViewArea));

@@ -1,9 +1,9 @@
+import BookModel from "../../../model/Book";
 export interface SettingPanelProps {
   currentEpub: any;
+  currentBook: BookModel;
   locations: any;
   isReading: boolean;
-  handleMessageBox: (isShow: boolean) => void;
-  handleMessage: (message: string) => void;
   t: (title: string) => string;
 }
 export interface SettingPanelState {

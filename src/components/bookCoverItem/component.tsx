@@ -1,19 +1,18 @@
-//卡片模式下的图书显示
 import React from "react";
 import RecentBooks from "../../utils/readUtils/recordRecent";
 import "./bookCoverItem.css";
 import { BookCoverProps, BookCoverState } from "./interface";
 import AddFavorite from "../../utils/readUtils/addFavorite";
 import ActionDialog from "../dialogs/actionDialog";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import { withRouter } from "react-router-dom";
 import RecordLocation from "../../utils/readUtils/recordLocation";
 import { isElectron } from "react-device-detect";
 import EmptyCover from "../emptyCover";
 import Parser from "html-react-parser";
 import { Trans } from "react-i18next";
-import BookUtil from "../../utils/bookUtil";
-
+import BookUtil from "../../utils/fileUtils/bookUtil";
+import toast from "react-hot-toast";
 declare var window: any;
 
 class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
@@ -38,36 +37,22 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
     }
 
     if (
-      OtherUtil.getReaderConfig("isOpenBook") === "yes" &&
+      StorageUtil.getReaderConfig("isOpenBook") === "yes" &&
       RecentBooks.getAllRecent()[0] === this.props.book.key &&
       !this.props.currentBook.key &&
       !filePath
     ) {
-      BookUtil.RedirectBook(this.props.book);
-    }
-    this.props.handleReadingBook(this.props.book);
-  }
-  componentWillReceiveProps(nextProps: BookCoverProps) {
-    if (nextProps.isDragToLove !== this.props.isDragToLove) {
-      if (
-        nextProps.isDragToLove &&
-        this.props.dragItem === this.props.book.key
-      ) {
-        this.handleLoveBook();
-        this.props.handleDragToLove(false);
-      }
-    }
-    if (nextProps.isDragToDelete !== this.props.isDragToDelete) {
-      if (
-        nextProps.isDragToDelete &&
-        this.props.dragItem === this.props.book.key
-      ) {
-        this.handleDeleteBook();
-        this.props.handleDragToDelete(false);
+      this.props.handleReadingBook(this.props.book);
+      if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
+        this.props.history.push(BookUtil.getBookUrl(this.props.book));
+      } else {
+        BookUtil.RedirectBook(this.props.book);
       }
     }
   }
+
   handleMoreAction = (event: any) => {
+    event.preventDefault();
     const e = event || window.event;
     let x = e.clientX;
     if (x > document.body.clientWidth - 300 && !this.props.isCollapsed) {
@@ -95,23 +80,35 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
   handleLoveBook = () => {
     AddFavorite.setFavorite(this.props.book.key);
     this.setState({ isFavorite: true });
-    this.props.handleMessage("Add Successfully");
-    this.props.handleMessageBox(true);
+    toast.success(this.props.t("Add Successfully"));
   };
   handleCancelLoveBook = () => {
     AddFavorite.clear(this.props.book.key);
     this.setState({ isFavorite: false });
-    this.props.handleMessage("Cancel Successfully");
-    this.props.handleMessageBox(true);
+    toast.success(this.props.t("Cancel Successfully"));
   };
   //控制按钮的弹出
   handleConfig = (mode: boolean) => {
     this.setState({ isOpenConfig: mode });
   };
   handleJump = () => {
+    if (this.props.isSelectBook) {
+      this.props.handleSelectedBooks(
+        this.props.isSelected
+          ? this.props.selectedBooks.filter(
+              (item) => item !== this.props.book.key
+            )
+          : [...this.props.selectedBooks, this.props.book.key]
+      );
+      return;
+    }
     RecentBooks.setRecent(this.props.book.key);
-
-    BookUtil.RedirectBook(this.props.book);
+    this.props.handleReadingBook(this.props.book);
+    if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
+      this.props.history.push(BookUtil.getBookUrl(this.props.book));
+    } else {
+      BookUtil.RedirectBook(this.props.book);
+    }
   };
   render() {
     let percentage = RecordLocation.getCfi(this.props.book.key)
@@ -128,37 +125,18 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
           onMouseLeave={() => {
             this.handleConfig(false);
           }}
+          onContextMenu={(event) => {
+            this.handleMoreAction(event);
+          }}
         >
-          {this.props.book.cover &&
-          this.props.book.cover !== "noCover" &&
-          this.props.book.publisher !== "mobi" &&
-          this.props.book.publisher !== "azw3" &&
-          this.props.book.publisher !== "txt" ? (
-            <img
-              className="book-cover-item-cover"
-              src={this.props.book.cover}
-              alt=""
-              onClick={() => {
-                this.handleJump();
-              }}
-              onDragStart={() => {
-                this.props.handleDragItem(this.props.book.key);
-              }}
-              onDragEnd={() => {
-                this.props.handleDragItem("");
-              }}
-            />
-          ) : (
+          {!this.props.book.cover ||
+          this.props.book.cover === "noCover" ||
+          (this.props.book.format === "PDF" &&
+            StorageUtil.getReaderConfig("isPDFCover") !== "yes") ? (
             <div
               className="book-cover-item-cover"
               onClick={() => {
                 this.handleJump();
-              }}
-              onDragStart={() => {
-                this.props.handleDragItem(this.props.book.key);
-              }}
-              onDragEnd={() => {
-                this.props.handleDragItem("");
               }}
             >
               <EmptyCover
@@ -169,6 +147,15 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
                 }}
               />
             </div>
+          ) : (
+            <img
+              className="book-cover-item-cover"
+              src={this.props.book.cover}
+              alt=""
+              onClick={() => {
+                this.handleJump();
+              }}
+            />
           )}
 
           <p className="book-cover-item-title">{this.props.book.name}</p>
@@ -188,7 +175,7 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
               <Trans>Empty</Trans>
             )}
           </div>
-          {this.state.isFavorite ? (
+          {this.state.isFavorite && !this.props.isSelectBook ? (
             <span
               className="icon-love book-loved-icon"
               onClick={() => {
@@ -197,8 +184,13 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
               style={{ right: "274px", bottom: "25px" }}
             ></span>
           ) : null}
-
-          {this.state.isOpenConfig ? (
+          {this.props.isSelectBook && this.props.isSelected ? (
+            <span
+              className="icon-message book-selected-icon"
+              style={{ right: "274px", bottom: "25px" }}
+            ></span>
+          ) : null}
+          {this.state.isOpenConfig && !this.props.isSelectBook ? (
             <>
               {this.props.book.format !== "PDF" && (
                 <div

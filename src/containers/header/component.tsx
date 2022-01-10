@@ -1,23 +1,24 @@
-//header 页面
 import React from "react";
 import "./header.css";
 import SearchBox from "../../components/searchBox";
 import ImportLocal from "../../components/importLocal";
 import { Trans } from "react-i18next";
 import { HeaderProps, HeaderState } from "./interface";
-import OtherUtil from "../../utils/otherUtil";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import UpdateInfo from "../../components/dialogs/updateInfo";
-import RestoreUtil from "../../utils/syncUtils/restoreUtil";
-import BackupUtil from "../../utils/syncUtils/backupUtil";
+import { restore } from "../../utils/syncUtils/restoreUtil";
+import { backup } from "../../utils/syncUtils/backupUtil";
 import { Tooltip } from "react-tippy";
 import { isElectron } from "react-device-detect";
+import { syncData } from "../../utils/syncUtils/common";
+import toast from "react-hot-toast";
 class Header extends React.Component<HeaderProps, HeaderState> {
   constructor(props: HeaderProps) {
     super(props);
 
     this.state = {
       isOnlyLocal: false,
-      language: OtherUtil.getReaderConfig("lang"),
+      language: StorageUtil.getReaderConfig("lang"),
       isNewVersion: false,
       width: document.body.clientWidth,
       isdataChange: false,
@@ -27,10 +28,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (isElectron) {
       const fs = window.require("fs");
       const path = window.require("path");
-      const request = window.require("request");
-      const { remote, app } = window.require("electron");
-      const configDir = (app || remote.app).getPath("userData");
-      const dirPath = path.join(configDir, "uploads");
+      const { ipcRenderer } = window.require("electron");
+      const dirPath = ipcRenderer.sendSync("user-data", "ping");
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath);
         fs.mkdirSync(path.join(dirPath, "data"));
@@ -41,26 +40,15 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       }
 
       if (
-        OtherUtil.getReaderConfig("storageLocation") &&
+        StorageUtil.getReaderConfig("storageLocation") &&
         !localStorage.getItem("storageLocation")
       ) {
         localStorage.setItem(
           "storageLocation",
-          OtherUtil.getReaderConfig("storageLocation")
+          StorageUtil.getReaderConfig("storageLocation")
         );
       }
-      if (!fs.existsSync(path.join(dirPath, `cover.png`))) {
-        let stream = fs.createWriteStream(path.join(dirPath, `cover.png`));
-        request(`https://koodo.960960.xyz/images/splash.png`)
-          .pipe(stream)
-          .on("close", function (err) {
-            if (err) {
-              console.log(err);
-            } else {
-              console.log("文件下载完毕");
-            }
-          });
-      }
+
       //Check for data update
       let storageLocation = localStorage.getItem("storageLocation")
         ? localStorage.getItem("storageLocation")
@@ -92,6 +80,11 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     window.addEventListener("resize", () => {
       this.setState({ width: document.body.clientWidth });
     });
+    window.addEventListener("focus", () => {
+      this.props.handleFetchBooks();
+      this.props.handleFetchNotes();
+      this.props.handleFetchBookmarks();
+    });
   }
 
   syncFromLocation = async () => {
@@ -114,46 +107,45 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       lastModified: new Date().getTime(),
       type: blobTemp.type,
     });
-    RestoreUtil.restore(
-      fileTemp,
-      () => {
-        this.setState({ isdataChange: false });
-        //Check for data update
-        let storageLocation = localStorage.getItem("storageLocation")
-          ? localStorage.getItem("storageLocation")
-          : window
-              .require("electron")
-              .ipcRenderer.sendSync("storage-location", "ping");
-        let sourcePath = path.join(
-          storageLocation,
-          "config",
-          "readerConfig.json"
-        );
+    let result = await restore(fileTemp, true);
+    if (result) {
+      this.setState({ isdataChange: false });
+      //Check for data update
+      let storageLocation = localStorage.getItem("storageLocation")
+        ? localStorage.getItem("storageLocation")
+        : window
+            .require("electron")
+            .ipcRenderer.sendSync("storage-location", "ping");
+      let sourcePath = path.join(
+        storageLocation,
+        "config",
+        "readerConfig.json"
+      );
 
-        fs.readFile(sourcePath, "utf8", (err, data) => {
-          if (err) {
-            console.error(err);
-            return;
-          }
-          const readerConfig = JSON.parse(data);
-          if (
-            localStorage.getItem("lastSyncTime") &&
-            readerConfig.lastSyncTime
-          ) {
-            localStorage.setItem("lastSyncTime", readerConfig.lastSyncTime);
-          }
-        });
-      },
-      true
-    );
+      fs.readFile(sourcePath, "utf8", (err, data) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        const readerConfig = JSON.parse(data);
+        if (localStorage.getItem("lastSyncTime") && readerConfig.lastSyncTime) {
+          localStorage.setItem("lastSyncTime", readerConfig.lastSyncTime);
+        }
+      });
+    }
+    if (!result) {
+      toast.error(this.props.t("Sync Failed"));
+    } else {
+      toast.success(this.props.t("Sync Successfully"));
+    }
   };
-  syncToLocation = () => {
-    if (OtherUtil.getReaderConfig("isFirst") !== "no") {
+  handleSync = () => {
+    if (StorageUtil.getReaderConfig("isFirst") !== "no") {
       this.props.handleTipDialog(true);
       this.props.handleTip(
         "You need to manually change the storage location to the same sync folder on different computers. When you click the sync button, Koodo Reader will automatically upload or download the data from this folder according the timestamp."
       );
-      OtherUtil.setReaderConfig("isFirst", "no");
+      StorageUtil.setReaderConfig("isFirst", "no");
       return;
     }
     const fs = window.require("fs");
@@ -164,21 +156,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           .require("electron")
           .ipcRenderer.sendSync("storage-location", "ping");
     let sourcePath = path.join(storageLocation, "config", "readerConfig.json");
-    fs.readFile(sourcePath, "utf8", (err, data) => {
-      if (err) {
-        BackupUtil.backup(
-          this.props.books,
-          this.props.notes,
-          this.props.bookmarks,
-          () => {
-            this.props.handleMessage("Sync Successfully");
-            this.props.handleMessageBox(true);
-          },
-          5,
-          () => {}
-        );
-        console.log(err);
-        return;
+    fs.readFile(sourcePath, "utf8", async (err, data) => {
+      if (err || !data) {
+        this.syncToLocation();
       }
       const readerConfig = JSON.parse(data);
 
@@ -191,19 +171,26 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         this.syncFromLocation();
       } else {
         //否则就把Koodo中数据同步到同步文件夹
-        BackupUtil.backup(
-          this.props.books,
-          this.props.notes,
-          this.props.bookmarks,
-          () => {
-            this.props.handleMessage("Sync Successfully");
-            this.props.handleMessageBox(true);
-          },
-          5,
-          () => {}
-        );
+        this.syncToLocation();
       }
     });
+  };
+  syncToLocation = async () => {
+    let timestamp = new Date().getTime().toString();
+    StorageUtil.setReaderConfig("lastSyncTime", timestamp);
+    localStorage.setItem("lastSyncTime", timestamp);
+    let result = await backup(
+      this.props.books,
+      this.props.notes,
+      this.props.bookmarks,
+      true
+    );
+    if (!result) {
+      toast.error(this.props.t("Sync Failed"));
+    } else {
+      syncData(result as Blob, this.props.books, true);
+      toast.success(this.props.t("Sync Successfully"));
+    }
   };
 
   render() {
@@ -228,6 +215,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               title={this.props.t("Sort")}
               position="top"
               trigger="mouseenter"
+              distance={20}
             >
               <span className="icon-sort-desc header-sort-icon"></span>
             </Tooltip>
@@ -246,7 +234,12 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               position="top"
               trigger="mouseenter"
             >
-              <span className="icon-setting setting-icon"></span>
+              <span
+                className="icon-setting setting-icon"
+                style={
+                  this.props.isNewWarning ? { color: "rgb(35, 170, 242)" } : {}
+                }
+              ></span>
             </Tooltip>
           </div>
           {isElectron && (
@@ -254,7 +247,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
               className="setting-icon-container"
               onClick={() => {
                 // this.syncFromLocation();
-                this.syncToLocation();
+                this.handleSync();
               }}
               style={{ left: "635px" }}
             >
@@ -312,10 +305,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             handleDrag: this.props.handleDrag,
           }}
         />
-        {isElectron &&
-          OtherUtil.getReaderConfig("isDisableUpdate") !== "yes" && (
-            <UpdateInfo />
-          )}
+        {isElectron && <UpdateInfo />}
       </div>
     );
   }

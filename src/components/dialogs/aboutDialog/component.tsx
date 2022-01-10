@@ -1,4 +1,3 @@
-//排序弹窗
 import React from "react";
 import { Trans } from "react-i18next";
 import { AboutDialogProps, AboutDialogState } from "./interface";
@@ -26,11 +25,15 @@ class AboutDialog extends React.Component<AboutDialogProps, AboutDialogState> {
         onMouseEnter={() => {
           this.props.handleAbout(true);
         }}
-        style={{
-          left: "525px",
-          height: "180px",
-          width: "120px",
-        }}
+        style={
+          this.props.isNewWarning
+            ? { left: "510px", width: "150px" }
+            : {
+                left: "510px",
+
+                width: "150px",
+              }
+        }
       >
         <ul className="sort-by-category">
           <li
@@ -48,11 +51,11 @@ class AboutDialog extends React.Component<AboutDialogProps, AboutDialogState> {
             onClick={() => {
               if (navigator.language.indexOf("zh") > -1) {
                 this.handleJump(
-                  "https://www.notion.so/troyeguo/e9c4e5755d564b0db6340eeba6d9ece9?v=7c8fcbed9adf4592ada95cfd593868c9"
+                  "https://troyeguo.notion.site/Koodo-Reader-0c9c7ccdc5104a54825dfc72f1c84bea"
                 );
               } else {
                 this.handleJump(
-                  "https://www.notion.so/troyeguo/01aaa516687c418499f713d34793b9ad?v=54d51fe1688a4f8ab5784b17e4df3308"
+                  "https://troyeguo.notion.site/Koodo-Reader-Document-9c767af3d66c459db996bdd08a34c34b"
                 );
               }
             }}
@@ -62,7 +65,7 @@ class AboutDialog extends React.Component<AboutDialogProps, AboutDialogState> {
           <li
             className="sort-by-category-list"
             onClick={() => {
-              this.handleJump("https://koodo.960960.xyz/support");
+              this.handleJump(`https://koodo.960960.xyz/en/support`);
             }}
           >
             <Trans>Feedback</Trans>
@@ -94,19 +97,22 @@ class AboutDialog extends React.Component<AboutDialogProps, AboutDialogState> {
           <li
             className="sort-by-category-list"
             onClick={() => {
-              this.handleJump("https://960960.xyz");
-            }}
-          >
-            <Trans>About developer</Trans>
-          </li>
-          <li
-            className="sort-by-category-list"
-            onClick={() => {
               this.handleJump("https://github.com/troyeguo/koodo-reader");
             }}
           >
             <Trans>Github Repo</Trans>
           </li>
+          {this.props.isNewWarning && (
+            <li
+              className="sort-by-category-list"
+              onClick={() => {
+                this.handleJump("https://koodo.960960.xyz/en");
+              }}
+              style={{ color: "rgb(35, 170, 242)" }}
+            >
+              <Trans>New Version</Trans>
+            </li>
+          )}
         </ul>
       </div>
     );

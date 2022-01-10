@@ -1,5 +1,6 @@
 import BookModel from "../../../model/Book";
 import NoteModel from "../../../model/Note";
+import HtmlBookModel from "../../../model/HtmlBook";
 import BookmarkModel from "../../../model/Bookmark";
 import { RouteComponentProps } from "react-router";
 
@@ -9,6 +10,7 @@ export interface OperationPanelProps extends RouteComponentProps<any> {
   bookmarks: BookmarkModel[];
   notes: NoteModel[];
   books: BookModel[];
+  htmlBook: HtmlBookModel;
   flattenChapters: any;
   locations: any;
   rendition: any;
@@ -17,10 +19,13 @@ export interface OperationPanelProps extends RouteComponentProps<any> {
   handleReadingState: (isReading: boolean) => void;
   handleFetchBookmarks: () => void;
   handleSearch: (isSearch: boolean) => void;
-  handleMessageBox: (isShow: boolean) => void;
-  handleMessage: (message: string) => void;
   handleOpenMenu: (isOpenMenu: boolean) => void;
   handleShowBookmark: (isShowBookmark: boolean) => void;
+  handleReadingBook: (currentBook: BookModel | object) => void;
+  handleReadingEpub: (currentBook: object) => void;
+
+  t: (title: string) => string;
+  handleHtmlBook: (htmlBook: HtmlBookModel | null) => void;
 }
 
 export interface OperationPanelState {

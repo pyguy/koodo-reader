@@ -27,6 +27,28 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
 
     <div id="root"></div>
+    <canvas id="the-canvas"></canvas>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=UA-149740367-3"
+      id="analytic"
+    ></script>
+    <script>
+      if (
+        JSON.parse(localStorage.getItem("readerConfig") || "{}")
+          .isDisableAnalytics !== "yes"
+      ) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag() {
+          dataLayer.push(arguments);
+        }
+        gtag("js", new Date());
+
+        gtag("config", "UA-149740367-3");
+      }
+    </script>
+
     <script>
       const style = document.createElement("link");
       style.rel = "stylesheet";
@@ -79,11 +101,19 @@
     ></script>
     <script
       type="text/javascript"
-      src="%PUBLIC_URL%/lib/pdf/build/pdf.js"
+      src="%PUBLIC_URL%/lib/kookit/kookit.umd.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="%PUBLIC_URL%/lib/marked/marked.js"
     ></script>
     <script
       type="text/javascript"
       src="%PUBLIC_URL%/lib/EpubJS/epub.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="%PUBLIC_URL%/lib/pdf/build/pdf.js"
     ></script>
     <script
       type="text/javascript"
@@ -117,10 +147,7 @@
       type="text/javascript"
       src="%PUBLIC_URL%/lib/unrar/unrar.js"
     ></script>
-    <script
-      type="text/javascript"
-      src="%PUBLIC_URL%/lib/djvu/djvu.min.js"
-    ></script>
+    <script type="text/javascript" src="%PUBLIC_URL%/lib/djvu/djvu.js"></script>
     <script
       type="text/javascript"
       src="%PUBLIC_URL%/lib/djvu/djvu_viewer.js"
@@ -129,14 +156,5 @@
       type="text/javascript"
       src="%PUBLIC_URL%/lib/mammoth/mammoth.browser.min.js"
     ></script>
-    <script>
-      var _hmt = _hmt || [];
-      (function () {
-        var hm = document.createElement("script");
-        hm.src = "https://hm.baidu.com/hm.js?358570be1bfc40e01db43adefade5ad5";
-        var s = document.getElementsByTagName("script")[0];
-        s.parentNode.insertBefore(hm, s);
-      })();
-    </script>
   </body>
 </html>

@@ -1,11 +1,10 @@
-//我的书摘页面
 import React from "react";
 import "./deleteIcon.css";
 import { DeleteIconProps, DeleteIconStates } from "./interface";
 import localforage from "localforage";
 import TagUtil from "../../utils/readUtils/tagUtil";
 import DeletePopup from "../dialogs/deletePopup";
-
+import toast from "react-hot-toast";
 class DeleteIcon extends React.Component<DeleteIconProps, DeleteIconStates> {
   constructor(props: DeleteIconProps) {
     super(props);
@@ -38,8 +37,7 @@ class DeleteIcon extends React.Component<DeleteIconProps, DeleteIconStates> {
             .removeItem(this.props.mode)
             .then(() => {
               deleteFunc();
-              this.props.handleMessage("Delete Successfully");
-              this.props.handleMessageBox(true);
+              toast.success(this.props.t("Delete Successfully"));
             })
             .catch(() => {
               console.log("删除失败");
@@ -49,8 +47,7 @@ class DeleteIcon extends React.Component<DeleteIconProps, DeleteIconStates> {
             .setItem(this.props.mode, deleteItems)
             .then(() => {
               deleteFunc();
-              this.props.handleMessage("Delete Successfully");
-              this.props.handleMessageBox(true);
+              toast.success(this.props.t("Delete Successfully"));
             })
             .catch(() => {
               console.log("修改失败");

@@ -3,19 +3,15 @@ import NoteModel from "../../model/Note";
 import ReadingTime from "./readingTime";
 import RecordLocation from "./recordLocation";
 import _ from "underscore";
-//获取所有图书的书名
 const getBookName = (books: BookModel[]) => {
   return books.map((item) => item.name);
 };
-//获取所有作者名
 const getAuthorName = (books: BookModel[]) => {
   return books.map((item) => item.author);
 };
-//获取所有图书的key值
 const getBookKey = (books: BookModel[]) => {
   return books.map((item) => item.key);
 };
-//获取图书索引
 const getBookIndex = (nameArr: string[], oldNameArr: string[]) => {
   let indexArr: number[] = [];
   for (let i = 0; i < nameArr.length; i++) {
@@ -46,7 +42,7 @@ const getPercentageArr = () => {
   let locationObj = RecordLocation.getAllCfi();
   var sortable: any = [];
   for (let obj in locationObj) {
-    sortable.push([obj, locationObj[obj].percentage]);
+    sortable.push([obj, locationObj[obj].percentage || 0]);
   }
   sortable.sort(function (a, b) {
     return a[1] - b[1];
@@ -80,6 +76,7 @@ class SortUtil {
     }
     if (bookSortCode.sort === 3) {
       let durationKeys = getDurationArr();
+
       let bookKeys = getBookKey(books);
       if (bookSortCode.order === 1) {
         return getBookIndex(_.union(durationKeys, bookKeys), bookKeys);
@@ -208,8 +205,8 @@ class SortUtil {
   static setNoteSortCode(sort: number, order: number) {
     let json =
       localStorage.getItem("noteSortCode") ||
-      JSON.stringify({ sort: 2, order: 2 });
-    let obj = json ? JSON.parse(json) : { sort: 2, order: 2 };
+      JSON.stringify({ sort: 2, order: 1 });
+    let obj = json ? JSON.parse(json) : { sort: 2, order: 1 };
     obj.sort = sort;
     obj.order = order;
     localStorage.setItem("noteSortCode", JSON.stringify(obj));
@@ -218,8 +215,8 @@ class SortUtil {
   static getNoteSortCode() {
     let json =
       localStorage.getItem("noteSortCode") ||
-      JSON.stringify({ sort: 2, order: 2 });
-    let obj = JSON.parse(json) || { sort: 2, order: 2 };
+      JSON.stringify({ sort: 2, order: 1 });
+    let obj = JSON.parse(json) || { sort: 2, order: 1 };
     return obj || null;
   }
 }
