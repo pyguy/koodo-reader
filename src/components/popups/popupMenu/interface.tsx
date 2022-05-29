@@ -2,7 +2,6 @@ import BookModel from "../../../model/Book";
 import NoteModel from "../../../model/Note";
 
 export interface PopupMenuProps {
-  currentEpub: any;
   currentBook: BookModel;
   isOpenMenu: boolean;
   isChangeDirection: boolean;
@@ -23,6 +22,7 @@ export interface PopupMenuProps {
   handleOpenMenu: (isOpenMenu: boolean) => void;
   handleMenuMode: (menu: string) => void;
   handleChangeDirection: (isChangeDirection: boolean) => void;
+  handleRenderNoteFunc: (renderNoteFunc: () => void) => void;
 }
 export interface PopupMenuStates {
   deleteKey: string;

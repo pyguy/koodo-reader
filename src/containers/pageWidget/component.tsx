@@ -11,7 +11,6 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
       isSingle:
         StorageUtil.getReaderConfig("readerMode") &&
         StorageUtil.getReaderConfig("readerMode") !== "double",
-      currentChapter: "",
       prevPage: 0,
       nextPage: 0,
       scale: StorageUtil.getReaderConfig("scale") || 1,
@@ -21,35 +20,20 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
     this.isFirst = true;
   }
 
-  componentWillReceiveProps(nextProps: BackgroundProps) {
-    if (
-      nextProps.currentEpub.rendition &&
-      nextProps.currentEpub.rendition.location &&
-      this.props.currentEpub.rendition
-    ) {
-      const currentLocation =
-        this.props.currentEpub.rendition.currentLocation();
-      if (!currentLocation.start) {
-        return;
-      }
-      this.isFirst && this.props.handleFetchLocations(this.props.currentEpub);
-      this.isFirst = false;
-      this.setState({
-        prevPage: currentLocation.start.displayed.page,
-        nextPage: currentLocation.end.displayed.page,
-      });
-      let chapterHref = currentLocation.start.href;
+  async UNSAFE_componentWillReceiveProps(nextProps: BackgroundProps) {
+    if (nextProps.htmlBook !== this.props.htmlBook && nextProps.htmlBook) {
+      nextProps.htmlBook.rendition.on("page-changed", async () => {
+        let pageInfo = await nextProps.htmlBook.rendition.getProgress();
 
-      let chapter = "Unknown Chapter";
-      let currentChapter = this.props.flattenChapters.filter(
-        (item: any) =>
-          item.href.indexOf(chapterHref) > -1 ||
-          chapterHref.indexOf(item.href) > -1
-      )[0];
-      if (currentChapter) {
-        chapter = currentChapter.label.trim(" ");
-      }
-      this.setState({ currentChapter: chapter });
+        this.setState({
+          prevPage: this.state.isSingle
+            ? pageInfo.currentPage
+            : pageInfo.currentPage * 2 - 1,
+          nextPage: this.state.isSingle
+            ? pageInfo.currentPage
+            : pageInfo.currentPage * 2,
+        });
+      });
     }
   }
 
@@ -64,7 +48,7 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
         }}
       >
         <div className="header-container">
-          {!this.state.isHideHeader && this.state.currentChapter && (
+          {!this.state.isHideHeader && this.props.currentChapter && (
             <p
               className="header-chapter-name"
               style={
@@ -76,7 +60,7 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
                   : {}
               }
             >
-              {this.state.currentChapter}
+              {this.props.currentChapter}
             </p>
           )}
           {!this.state.isHideHeader && !this.state.isSingle && (
@@ -129,6 +113,9 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
               </p>
             )}
         </div>
+        <>
+          {this.props.isShowBookmark ? <div className="bookmark"></div> : null}
+        </>
       </div>
     );
   }

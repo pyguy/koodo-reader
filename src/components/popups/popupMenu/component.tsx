@@ -36,27 +36,13 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
 
   componentDidMount() {
     this.props.rendition.on("rendered", () => {
-      new Promise<void>((resolve, reject) => {
-        this.getHighlighter();
-        resolve();
-      }).then(() => {
-        this.renderHighlighters();
-      });
-      let doc = getIframeDoc();
-      if (!doc) return;
-      doc.addEventListener("mousedown", this.openMenu);
-      if (this.props.currentBook.format === "PDF") {
-        setTimeout(() => {
-          this.renderHighlighters();
-        }, 1000);
-
-        doc.addEventListener("mousewheel", () => {
-          this.renderHighlighters();
-        });
-      }
+      setTimeout(() => {
+        this.handleRenderHighlight();
+        this.props.handleRenderNoteFunc(this.handleRenderHighlight);
+      }, 500);
     });
   }
-  componentWillReceiveProps(nextProps: PopupMenuProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: PopupMenuProps) {
     if (nextProps.rect !== this.props.rect) {
       this.setState(
         {
@@ -68,6 +54,26 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
       );
     }
   }
+  handleRenderHighlight = () => {
+    new Promise<void>((resolve, reject) => {
+      this.getHighlighter();
+      resolve();
+    }).then(() => {
+      this.renderHighlighters();
+    });
+    let doc = getIframeDoc();
+    if (!doc) return;
+    doc.addEventListener("mousedown", this.openMenu);
+    if (this.props.currentBook.format === "PDF") {
+      setTimeout(() => {
+        this.renderHighlighters();
+      }, 1000);
+
+      doc.addEventListener("mousewheel", () => {
+        this.renderHighlighters();
+      });
+    }
+  };
   //新建高亮
   getHighlighter = () => {
     // 注意点一
@@ -93,10 +99,8 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
           onclick: this.handleNoteClick,
         },
         onElementCreate: (element: any) => {
-          setTimeout(() => {
-            element.dataset.key =
-              this.key || this.props.notes[this.props.notes.length - 1].key;
-          }, 100);
+          element.dataset.key =
+            this.key || this.props.notes[this.props.notes.length - 1].key;
         },
       };
       let applier = window.rangy.createClassApplier(item, config);
@@ -127,7 +131,7 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
     });
   };
 
-  showHighlight = (selected: any, colorCode: string, noteKey: string) => {
+  showPDFHighlight = (selected: any, colorCode: string, noteKey: string) => {
     let iWin = getPDFIframeDoc();
     if (!iWin) return;
     var pageIndex = selected.page;
@@ -144,7 +148,7 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
         var bounds = viewport.convertToViewportRectangle(rect);
         var el = iWin.document.createElement("div");
 
-        el.setAttribute(
+        el?.setAttribute(
           "style",
           "position: absolute;" +
             (colorCode.indexOf("color") > -1
@@ -164,8 +168,9 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
             Math.abs(bounds[1] - bounds[3]) +
             "px; z-index:0;"
         );
-        el.setAttribute("key", noteKey);
-        el.addEventListener("click", (event: any) => {
+        el?.setAttribute("key", noteKey);
+        el?.setAttribute("class", "pdf-note");
+        el?.addEventListener("click", (event: any) => {
           this.handlePDFClick(event);
         });
 
@@ -173,6 +178,7 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
       });
     }
   };
+
   handleClickHighlighter = (key: string) => {
     let dialog: HTMLInputElement | null = document.querySelector(".editor-box");
     if (!dialog) return;
@@ -190,7 +196,6 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
     let rect = this.state.rect;
     if (!rect) return;
     this.props.handleChangeDirection(false);
-    // const rect = this.rect;
     let page: any = { offsetLeft: 0 };
     if (this.props.currentBook.format !== "PDF") {
       page = document.getElementById("page-area");
@@ -228,23 +233,23 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
     this.setState({ rect: null });
   };
   //渲染高亮
-  renderHighlighters = () => {
+  renderHighlighters = async () => {
     let highlighters: any = this.props.notes;
     if (!highlighters) return;
     let highlightersByChapter = highlighters.filter((item: any) => {
       return (
-        item.chapterIndex === this.props.chapterIndex &&
-        item.chapter === this.props.chapter &&
+        (item.chapterIndex === this.props.chapterIndex ||
+          item.chapter === this.props.chapter) &&
         item.bookKey === this.props.currentBook.key
       );
     });
+
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
     if (!iframe || !iframe.contentWindow) return;
     let iWin = iframe.contentWindow || iframe.contentDocument?.defaultView;
     this.highlighter && this.highlighter.removeAllHighlights(); // 为了避免下次反序列化失败，必须先清除已有的高亮
-
     let classes = [
       "color-0",
       "color-1",
@@ -255,7 +260,6 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
       "line-2",
       "line-3",
     ];
-
     highlightersByChapter &&
       highlightersByChapter.forEach((item: any) => {
         this.key = item.key;
@@ -263,7 +267,7 @@ class PopupMenu extends React.Component<PopupMenuProps, PopupMenuStates> {
         if (item.bookKey === this.props.currentBook.key) {
           try {
             if (this.props.currentBook.format === "PDF") {
-              this.showHighlight(
+              this.showPDFHighlight(
                 JSON.parse(item.range),
                 classes[item.color],
                 item.key

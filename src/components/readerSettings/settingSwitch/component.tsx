@@ -47,7 +47,7 @@ class SettingSwitch extends React.Component<
       );
       toast(this.props.t("Change Successfully"));
       setTimeout(() => {
-        this.props.renderFunc();
+        this.props.renderBookFunc();
       }, 500);
     });
   };
@@ -67,7 +67,7 @@ class SettingSwitch extends React.Component<
   render() {
     return (
       <>
-        {Object.keys(this.props.currentEpub).length !== 0 && <TextToSpeech />}
+        <TextToSpeech />
         {readerSettingList.map((item) => (
           <div className="single-control-switch-container" key={item.title}>
             <span className="single-control-switch-title">

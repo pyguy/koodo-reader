@@ -48,6 +48,8 @@ class DeleteDialog extends React.Component<DeleteDialogProps> {
         this.props.handleSelectedBooks([]);
         this.props.handleFetchBooks(false);
         this.props.handleSelectBook(!this.props.isSelectBook);
+        this.props.handleDeleteDialog(false);
+        toast.success(this.props.t("Delete Successfully"));
         return;
       }
       ShelfUtil.clearShelf(this.props.shelfIndex, this.props.currentBook.key);
@@ -156,8 +158,9 @@ class DeleteDialog extends React.Component<DeleteDialogProps> {
         ) : (
           <div className="delete-dialog-other-option">
             <Trans>
-              This action will move this book and its the notes, bookmarks and
-              digests of this book to the recycle bin
+              {
+                "This action will move this book and its the notes, bookmarks and highlights of this book to the recycle bin"
+              }
             </Trans>
           </div>
         )}

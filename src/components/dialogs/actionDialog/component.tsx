@@ -38,11 +38,12 @@ class ActionDialog extends React.Component<ActionDialogProps> {
           onMouseLeave={() => {
             this.props.handleActionDialog(false);
           }}
+          onMouseEnter={() => {
+            this.props.handleActionDialog(true);
+          }}
           style={{
             left: this.props.left,
             top: this.props.top,
-            maxHeight: "45px",
-            paddingTop: "3px",
           }}
         >
           <div className="action-dialog-actions-container">
@@ -67,6 +68,9 @@ class ActionDialog extends React.Component<ActionDialogProps> {
         className="action-dialog-container"
         onMouseLeave={() => {
           this.props.handleActionDialog(false);
+        }}
+        onMouseEnter={() => {
+          this.props.handleActionDialog(true);
         }}
         style={{ left: this.props.left, top: this.props.top }}
       >
@@ -183,7 +187,7 @@ class ActionDialog extends React.Component<ActionDialogProps> {
           </div>
           <div>
             <p className="action-dialog-book-publisher">
-              <Trans>My Shelves</Trans>:
+              <Trans>Shelf</Trans>:
             </p>
             <p className="action-dialog-book-title">
               {ShelfUtil.getBookPosition(this.props.currentBook.key).map(

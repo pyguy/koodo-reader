@@ -101,15 +101,7 @@ class ThemeList extends React.Component<ThemeListProps, ThemeListState> {
       "textColor",
       typeof color === "object" ? color.color : color
     );
-    this.props.currentEpub.rendition &&
-      this.props.currentEpub.rendition.themes.default({
-        "a, article, cite, code, div, li, p, pre, span, table": {
-          color: `${
-            typeof color === "object" ? color.color : color
-          } !important`,
-        },
-      });
-    this.props.renderFunc();
+    this.props.renderBookFunc();
   };
   render() {
     const renderBackgroundColorList = () => {

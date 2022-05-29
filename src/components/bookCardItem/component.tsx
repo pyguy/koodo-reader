@@ -15,7 +15,6 @@ import toast from "react-hot-toast";
 declare var window: any;
 
 class BookCardItem extends React.Component<BookCardProps, BookCardState> {
-  epub: any;
   constructor(props: BookCardProps) {
     super(props);
     this.state = {
@@ -114,8 +113,8 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
     }
   };
   render() {
-    let percentage = RecordLocation.getCfi(this.props.book.key)
-      ? RecordLocation.getCfi(this.props.book.key).percentage
+    let percentage = RecordLocation.getHtmlLocation(this.props.book.key)
+      ? RecordLocation.getHtmlLocation(this.props.book.key).percentage
       : 0;
     const actionProps = { left: this.state.left, top: this.state.top };
 
@@ -128,6 +127,7 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
           }}
           onMouseLeave={() => {
             this.handleConfig(false);
+            this.props.handleActionDialog(false);
           }}
           onContextMenu={(event) => {
             this.handleMoreAction(event);
@@ -172,10 +172,11 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
               }}
             ></span>
           ) : null}
-          {this.props.isSelectBook && this.props.isSelected ? (
-            <span className="icon-message book-selected-icon"></span>
-          ) : this.props.isSelectBook ? (
-            <span className="icon-message book-deselect-icon"></span>
+          {this.props.isSelectBook ? (
+            <span
+              className="icon-message book-selected-icon"
+              style={this.props.isSelected ? {} : { color: "#eee" }}
+            ></span>
           ) : null}
 
           {this.state.isOpenConfig && !this.props.isSelectBook ? (

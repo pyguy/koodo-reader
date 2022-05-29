@@ -12,21 +12,30 @@ class NavList extends React.Component<NavListProps, NavListState> {
     };
   }
   //跳转到图书的指定位置
-  handleJump(cfi: string) {
+  async handleJump(cfi: string) {
     if (!cfi) {
       toast(this.props.t("Wrong bookmark"));
       return;
     }
-    if (this.props.currentBook.format === "EPUB") {
-      this.props.currentEpub.rendition.display(cfi);
-    } else {
-      let bookLocation = JSON.parse(cfi) || {};
-      this.props.htmlBook.rendition.goToPosition(
-        bookLocation.text,
-        bookLocation.chapterTitle,
-        bookLocation.count
-      );
+    console.log(cfi);
+    let bookLocation;
+    try {
+      bookLocation = JSON.parse(cfi) || {};
+    } catch (error) {
+      bookLocation = {
+        cfi: cfi,
+      };
     }
+
+    await this.props.htmlBook.rendition.goToPosition(
+      JSON.stringify({
+        text: bookLocation.text,
+        chapterTitle: bookLocation.chapterTitle,
+        count: bookLocation.count,
+        percentage: bookLocation.percentage,
+        cfi: bookLocation.cfi,
+      })
+    );
   }
   handleShowDelete = (index: number) => {
     this.setState({ deleteIndex: index });

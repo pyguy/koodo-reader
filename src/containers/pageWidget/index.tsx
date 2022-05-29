@@ -1,15 +1,16 @@
 import { connect } from "react-redux";
 import { stateType } from "../../store";
 import Background from "./component";
-import { handleFetchLocations } from "../../store/actions";
 
 const mapStateToProps = (state: stateType) => {
   return {
-    currentEpub: state.book.currentEpub,
     currentBook: state.book.currentBook,
-    flattenChapters: state.reader.flattenChapters,
     locations: state.progressPanel.locations,
+    currentChapter: state.reader.currentChapter,
+    currentChapterIndex: state.reader.currentChapterIndex,
+    htmlBook: state.reader.htmlBook,
+    isShowBookmark: state.viewArea.isShowBookmark,
   };
 };
-const actionCreator = { handleFetchLocations };
+const actionCreator = {};
 export default connect(mapStateToProps, actionCreator)(Background);

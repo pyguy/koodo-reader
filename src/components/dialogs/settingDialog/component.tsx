@@ -14,10 +14,12 @@ import {
   settingList,
   langList,
   searchList,
+  skinList,
 } from "../../../constants/settingList";
 import { themeList } from "../../../constants/themeList";
 import _ from "underscore";
 import toast from "react-hot-toast";
+import { openExternalUrl } from "../../../utils/serviceUtils/urlUtil";
 class SettingDialog extends React.Component<
   SettingInfoProps,
   SettingInfoState
@@ -38,9 +40,10 @@ class SettingDialog extends React.Component<
       isPreventSleep: StorageUtil.getReaderConfig("isPreventSleep") === "yes",
       isOpenInMain: StorageUtil.getReaderConfig("isOpenInMain") === "yes",
       isDisableUpdate: StorageUtil.getReaderConfig("isDisableUpdate") === "yes",
-      isDisplayDark: StorageUtil.getReaderConfig("isDisplayDark") === "yes",
+      appSkin: StorageUtil.getReaderConfig("appSkin"),
       isDisableAnalytics:
         StorageUtil.getReaderConfig("isDisableAnalytics") === "yes",
+      isUseBuiltIn: StorageUtil.getReaderConfig("isUseBuiltIn") === "yes",
       isPDFCover: StorageUtil.getReaderConfig("isPDFCover") === "yes",
       currentThemeIndex: _.findLastIndex(themeList, {
         name: StorageUtil.getReaderConfig("themeColor"),
@@ -55,22 +58,29 @@ class SettingDialog extends React.Component<
           dropdownList[0].option.indexOf(
             StorageUtil.getReaderConfig("systemFont")
           )
-        ].setAttribute("selected", "selected");
+        ]?.setAttribute("selected", "selected");
     document
       .getElementsByClassName("lang-setting-dropdown")[1]
       ?.children[
-        ["zh", "cht", "en", "ru"].indexOf(
-          StorageUtil.getReaderConfig("lang") ||
-            (navigator.language.indexOf("zh") > -1 ? "zh" : "en")
-        )
-      ].setAttribute("selected", "selected");
+        langList
+          .map((item) => item.value)
+          .indexOf(
+            StorageUtil.getReaderConfig("lang") ||
+              (navigator.language.indexOf("zh") > -1 ? "zh" : "en")
+          )
+      ]?.setAttribute("selected", "selected");
     document.getElementsByClassName("lang-setting-dropdown")[2]?.children[
       _.findLastIndex(searchList, {
         value:
           StorageUtil.getReaderConfig("searchEngine") ||
           (navigator.language === "zh-CN" ? "baidu" : "google"),
       })
-    ].setAttribute("selected", "selected");
+    ]?.setAttribute("selected", "selected");
+    document.getElementsByClassName("lang-setting-dropdown")[3]?.children[
+      _.findLastIndex(skinList, {
+        value: StorageUtil.getReaderConfig("appSkin") || "light",
+      })
+    ]?.setAttribute("selected", "selected");
   }
   handleRest = (bool: boolean) => {
     toast.success(this.props.t("Change Successfully"));
@@ -82,15 +92,38 @@ class SettingDialog extends React.Component<
   changeSearch = (searchEngine: string) => {
     StorageUtil.setReaderConfig("searchEngine", searchEngine);
   };
+  changeSkin = (skin: string) => {
+    StorageUtil.setReaderConfig("appSkin", skin);
+
+    if (
+      skin === "night" ||
+      (StorageUtil.getReaderConfig("appSkin") === "system" &&
+        StorageUtil.getReaderConfig("isOSNight") === "yes")
+    ) {
+      StorageUtil.setReaderConfig("backgroundColor", "rgba(44,47,49,1)");
+      StorageUtil.setReaderConfig("textColor", "rgba(255,255,255,1)");
+    } else if (
+      skin === "light" ||
+      (StorageUtil.getReaderConfig("appSkin") === "system" &&
+        StorageUtil.getReaderConfig("isOSNight") !== "yes")
+    ) {
+      StorageUtil.setReaderConfig("backgroundColor", "rgba(255,255,255,1)");
+      StorageUtil.setReaderConfig("textColor", "rgba(0,0,0,1)");
+    }
+
+    if (isElectron) {
+      toast(this.props.t("Try refresh or restart"));
+    } else {
+      window.location.reload();
+    }
+  };
   changeFont = (font: string) => {
     let body = document.getElementsByTagName("body")[0];
-    body.setAttribute("style", "font-family:" + font + "!important");
+    body?.setAttribute("style", "font-family:" + font + "!important");
     StorageUtil.setReaderConfig("systemFont", font);
   };
   handleJump = (url: string) => {
-    isElectron
-      ? window.require("electron").shell.openExternal(url)
-      : window.open(url);
+    openExternalUrl(url);
   };
   handleSetting = (stateName: string) => {
     this.setState({ [stateName]: !this.state[stateName] } as any);
@@ -156,26 +189,6 @@ class SettingDialog extends React.Component<
       localStorage.getItem("storageLocation") ||
       ipcRenderer.sendSync("storage-location", "ping");
   };
-  handleDisplayDark = () => {
-    this.setState({ isDisplayDark: !this.state.isDisplayDark });
-    StorageUtil.setReaderConfig(
-      "isDisplayDark",
-      this.state.isDisplayDark ? "no" : "yes"
-    );
-    if (StorageUtil.getReaderConfig("isDisplayDark") === "yes") {
-      StorageUtil.setReaderConfig("backgroundColor", "rgba(44,47,49,1)");
-      StorageUtil.setReaderConfig("textColor", "rgba(255,255,255,1)");
-    } else {
-      StorageUtil.setReaderConfig("backgroundColor", "rgba(255,255,255,1)");
-      StorageUtil.setReaderConfig("textColor", "rgba(0,0,0,1)");
-    }
-
-    if (isElectron) {
-      toast(this.props.t("Try refresh or restart"));
-    } else {
-      window.location.reload();
-    }
-  };
 
   handleTheme = (name: string, index: number) => {
     this.setState({ currentThemeIndex: index });
@@ -209,6 +222,16 @@ class SettingDialog extends React.Component<
         <p className="setting-subtitle">
           <Trans>Version</Trans>
           {version}
+          &nbsp;&nbsp;
+          <Trans>
+            {StorageUtil.getReaderConfig("appInfo") === "new"
+              ? "New Version Available"
+              : StorageUtil.getReaderConfig("appInfo") === "stable"
+              ? "Latest Stable Version"
+              : StorageUtil.getReaderConfig("appInfo") === "dev"
+              ? "Developer Version"
+              : ""}
+          </Trans>
         </p>
         <div
           className="setting-close-container"
@@ -237,9 +260,6 @@ class SettingDialog extends React.Component<
                     className="single-control-switch"
                     onClick={() => {
                       switch (item.propName) {
-                        case "isDisplayDark":
-                          this.handleDisplayDark();
-                          break;
                         case "isMergeWord":
                           this.handleMergeWord();
                           break;
@@ -324,6 +344,7 @@ class SettingDialog extends React.Component<
               </div>
             </>
           )}
+
           <div className="setting-dialog-new-title">
             <Trans>System Font</Trans>
             <select
@@ -371,6 +392,26 @@ class SettingDialog extends React.Component<
               }}
             >
               {searchList.map((item) => (
+                <option
+                  value={item.value}
+                  key={item.value}
+                  className="lang-setting-option"
+                >
+                  {this.props.t(item.label)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="setting-dialog-new-title">
+            <Trans>Appearance</Trans>
+            <select
+              name=""
+              className="lang-setting-dropdown"
+              onChange={(event) => {
+                this.changeSkin(event.target.value);
+              }}
+            >
+              {skinList.map((item) => (
                 <option
                   value={item.value}
                   key={item.value}
