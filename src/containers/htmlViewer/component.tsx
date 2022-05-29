@@ -16,7 +16,10 @@ import Background from "../../components/background";
 import toast from "react-hot-toast";
 import StyleUtil from "../../utils/readUtils/styleUtil";
 import "./index.css";
-import { HtmlMouseEvent } from "../../utils/serviceUtils/mouseEvent";
+import {
+  bindHtmlEvent,
+  HtmlMouseEvent,
+} from "../../utils/serviceUtils/mouseEvent";
 import untar from "js-untar";
 import ImageViewer from "../../components/imageViewer";
 import _ from "underscore";
@@ -25,14 +28,19 @@ import { getIframeDoc } from "../../utils/serviceUtils/docUtil";
 import { tsTransform } from "../../utils/serviceUtils/langUtil";
 
 declare var window: any;
-
-const { MobiRender, Azw3Render, TxtRender, StrRender, ComicRender } =
-  window.Kookit;
+let lock = false; //prevent from clicking too fasts
+const {
+  MobiRender,
+  Azw3Render,
+  EpubRender,
+  TxtRender,
+  StrRender,
+  ComicRender,
+} = window.Kookit;
 let Unrar = window.Unrar;
 let JSZip = window.JSZip;
 
 class Viewer extends React.Component<ViewerProps, ViewerState> {
-  epub: any;
   lock: boolean;
   constructor(props: ViewerProps) {
     super(props);
@@ -48,14 +56,22 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
           .chapterTitle || "",
       readerMode: StorageUtil.getReaderConfig("readerMode") || "double",
       margin: parseInt(StorageUtil.getReaderConfig("margin")) || 30,
+      extraMargin:
+        this.props.currentBook.format === "EPUB"
+          ? (document.body.clientWidth -
+              2 * (parseInt(StorageUtil.getReaderConfig("margin")) || 30) -
+              20) /
+            24
+          : 0,
       chapterIndex: 0,
       chapter: "",
       pageWidth: 0,
       pageHeight: 0,
+      rendition: null,
     };
     this.lock = false;
   }
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.handleFetchBookmarks();
     this.props.handleFetchNotes();
     this.props.handleFetchBooks();
@@ -63,16 +79,75 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
   componentDidMount() {
     this.handleRenderBook();
 
-    this.props.handleRenderFunc(this.handleRenderBook);
-    var doit;
+    this.props.handleRenderBookFunc(this.handleRenderBook);
+
     window.addEventListener("resize", () => {
-      clearTimeout(doit);
-      doit = setTimeout(this.handleRenderBook, 100);
+      if (lock) return;
+      let reader = document.querySelector("#page-area");
+      //解决文字遮挡问题
+      if (
+        reader &&
+        reader.getAttribute("style") &&
+        reader.getAttribute("style")!.indexOf("width") > -1
+      ) {
+        reader.setAttribute(
+          "style",
+          reader
+            .getAttribute("style")!
+            .substring(0, reader.getAttribute("style")!.indexOf("width"))
+        );
+        this.handlePageWidth();
+      }
+      if (this.props.currentBook.format === "EPUB") {
+        let doc = getIframeDoc();
+        if (!doc) return;
+        bindHtmlEvent(
+          this.props.htmlBook.rendition,
+          doc,
+          this.props.currentBook.key,
+          this.state.readerMode
+        );
+        this.handleBindGesture();
+        StyleUtil.addDefaultCss();
+        this.props.renderNoteFunc();
+      } else {
+        this.handleRenderBook();
+      }
+
+      lock = true;
+      setTimeout(function () {
+        lock = false;
+      }, 100);
+      return false;
     });
   }
+  handlePageWidth = () => {
+    let reader = document.querySelector("#page-area");
+    //解决文字遮挡问题
+    if (reader) {
+      reader.setAttribute(
+        "style",
+        reader.getAttribute("style") +
+          "width:" +
+          (parseInt(reader.clientWidth + "") % 2
+            ? parseInt(reader.clientWidth + "") - 1
+            : parseInt(reader.clientWidth + "")) +
+          "px; "
+      );
+    }
+  };
   handleRenderBook = () => {
+    if (lock) return;
     let { key, path, format, name } = this.props.currentBook;
     this.props.handleHtmlBook(null);
+    let doc = getIframeDoc();
+    if (doc && this.state.rendition) {
+      this.state.rendition.removeContent();
+    }
+
+    this.handlePageWidth();
+
+    window.rangy.init();
     BookUtil.fetchBook(key, true, path).then((result) => {
       if (!result) {
         toast.error(this.props.t("Book not exsits"));
@@ -83,6 +158,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         this.handleMobi(result as ArrayBuffer);
       } else if (format === "AZW3") {
         this.handleAzw3(result as ArrayBuffer);
+      } else if (format === "EPUB") {
+        this.handleEpub(result as ArrayBuffer);
       } else if (format === "TXT") {
         this.handleTxt(result as ArrayBuffer);
       } else if (format === "MD") {
@@ -114,16 +191,111 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     });
   };
 
-  handleRest = (rendition: any) => {
-    StyleUtil.addDefaultCss();
-    rendition.setStyle(StyleUtil.getCustomCss(true));
-    let bookLocation: { text: string; count: string; chapterTitle: string } =
-      RecordLocation.getHtmlLocation(this.props.currentBook.key);
-    rendition.goToPosition(
-      bookLocation.text,
-      bookLocation.chapterTitle,
-      bookLocation.count
+  handleRest = async (rendition: any) => {
+    HtmlMouseEvent(
+      rendition,
+      this.props.currentBook.key,
+      this.state.readerMode
     );
+    let chapters = await rendition.getChapter();
+    let flattenChapters = rendition.flatChapter(chapters);
+    this.props.handleHtmlBook({
+      key: this.props.currentBook.key,
+      chapters,
+      flattenChapters,
+      rendition: rendition,
+    });
+    this.setState({ rendition });
+
+    this.setState({
+      pageWidth: rendition.getPageSize().width,
+      pageHeight: rendition.getPageSize().height,
+    });
+    StyleUtil.addDefaultCss();
+    rendition.setStyle(
+      StyleUtil.getCustomCss(
+        this.props.currentBook.format === "EPUB" ? false : true
+      )
+    );
+
+    let bookLocation: {
+      text: string;
+      count: string;
+      chapterTitle: string;
+      percentage: string;
+      cfi: string;
+    } = RecordLocation.getHtmlLocation(this.props.currentBook.key);
+    await rendition.goToPosition(
+      JSON.stringify({
+        text: bookLocation.text,
+        chapterTitle: bookLocation.chapterTitle,
+        count: bookLocation.count,
+        percentage: bookLocation.percentage,
+        cfi: bookLocation.cfi,
+      })
+    );
+
+    rendition.on("rendered", async () => {
+
+      await this.handleLocation();
+      let bookLocation: { text: string; count: string; chapterTitle: string } =
+        RecordLocation.getHtmlLocation(this.props.currentBook.key);
+      if (this.props.currentBook.format.startsWith("CB")) {
+        this.setState({
+          chapter:
+            this.props.htmlBook.flattenChapters[
+              parseInt(bookLocation.count) || 0
+            ].label,
+          chapterIndex: parseInt(bookLocation.count) || 0,
+        });
+      } else {
+        let chapter =
+          bookLocation.chapterTitle ||
+          (this.props.htmlBook
+            ? this.props.htmlBook.flattenChapters[0].label
+            : "Unknown Chapter");
+        let chapterIndex =
+          bookLocation.chapterTitle && this.props.htmlBook
+            ? _.findLastIndex(
+                this.props.htmlBook.flattenChapters.map((item) => {
+                  item.label = item.label.trim();
+                  return item;
+                }),
+                {
+                  label: bookLocation.chapterTitle.trim(),
+                }
+              )
+            : 0;
+        this.props.handleCurrentChapter(chapter);
+        this.props.handleCurrentChapterIndex(chapterIndex);
+        this.props.handleFetchPercentage(this.props.currentBook);
+        this.setState({
+          chapter,
+          chapterIndex,
+        });
+      }
+      StyleUtil.addDefaultCss();
+      tsTransform();
+      this.handleBindGesture();
+      lock = true;
+      setTimeout(function () {
+        lock = false;
+      }, 1000);
+      return false;
+    });
+  };
+  handleLocation = async () => {
+    let position = await this.props.htmlBook.rendition.getPosition();
+    RecordLocation.recordHtmlLocation(
+      this.props.currentBook.key,
+      position.text,
+      position.chapterTitle,
+      position.count,
+      position.percentage,
+      position.cfi
+    );
+  };
+  handleBindGesture = () => {
     let doc = getIframeDoc();
     if (!doc) return;
     doc.addEventListener("click", (event) => {
@@ -132,48 +304,6 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       this.props.handleLeaveReader("top");
       this.props.handleLeaveReader("bottom");
     });
-
-    HtmlMouseEvent(
-      rendition,
-      this.props.currentBook.key,
-      this.state.readerMode
-    );
-
-    this.props.handleHtmlBook({
-      key: this.props.currentBook.key,
-      chapters: rendition.getChapter(),
-      subitems: [],
-      rendition: rendition,
-    });
-    this.setState({
-      pageWidth: rendition.getPageSize().width,
-      pageHeight: rendition.getPageSize().height,
-    });
-    rendition.on("rendered", () => {
-      let bookLocation: { text: string; count: string; chapterTitle: string } =
-        RecordLocation.getHtmlLocation(this.props.currentBook.key);
-      this.props.handleCurrentChapter(bookLocation.chapterTitle);
-      if (this.props.currentBook.format.startsWith("CB")) {
-        this.setState({
-          chapter:
-            this.props.htmlBook.chapters[parseInt(bookLocation.count) || 0]
-              .label,
-          chapterIndex: parseInt(bookLocation.count) || 0,
-        });
-      } else {
-        this.setState({
-          chapter:
-            bookLocation.chapterTitle || this.props.htmlBook.chapters[0].label,
-          chapterIndex: bookLocation.chapterTitle
-            ? _.findLastIndex(this.props.htmlBook.chapters, {
-                label: bookLocation.chapterTitle,
-              })
-            : 0,
-        });
-      }
-      tsTransform();
-    });
-
     doc.addEventListener("mouseup", () => {
       if (!doc!.getSelection()) return;
       var rect = doc!.getSelection()!.getRangeAt(0).getBoundingClientRect();
@@ -254,6 +384,25 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     );
     await rendition.renderTo(
       document.getElementsByClassName("html-viewer-page")[0]
+    );
+    this.handleRest(rendition);
+  };
+  handleEpub = async (result: ArrayBuffer) => {
+    let rendition = new EpubRender(
+      result,
+      this.state.readerMode,
+      StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false
+    );
+    let bookLocation: {
+      text: string;
+      count: string;
+      chapterTitle: string;
+      percentage: string;
+      cfi: string;
+    } = RecordLocation.getHtmlLocation(this.props.currentBook.key);
+    await rendition.renderTo(
+      document.getElementsByClassName("html-viewer-page")[0],
+      bookLocation.cfi
     );
     this.handleRest(rendition);
   };
@@ -415,10 +564,10 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
               ? {
                   left: `calc(50vw - ${
                     270 * parseFloat(this.state.scale)
-                  }px + 9px)`,
+                  }px + 20px)`,
                   right: `calc(50vw - ${
                     270 * parseFloat(this.state.scale)
-                  }px + 7px)`,
+                  }px + 15px)`,
                   overflowY: "scroll",
                   overflowX: "hidden",
                 }
@@ -433,8 +582,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 }
               : this.state.readerMode === "double"
               ? {
-                  left: this.state.margin + 10 + "px",
-                  right: this.state.margin + 10 + "px",
+                  left: this.state.margin + 10 - this.state.extraMargin + "px",
+                  right: this.state.margin + 10 - this.state.extraMargin + "px",
                 }
               : {}
           }
@@ -443,7 +592,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
             .props.currentBook.key ? (
           <Background />
         ) : null}
-        {this.props.htmlBook && (
+        {this.props.htmlBook ? (
           <PopupMenu
             {...{
               rendition: this.props.htmlBook.rendition,
@@ -454,7 +603,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
               chapter: this.state.chapter,
             }}
           />
-        )}
+        ) : null}
         {this.props.htmlBook && (
           <ImageViewer
             {...{

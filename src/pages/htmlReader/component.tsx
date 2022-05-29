@@ -1,9 +1,10 @@
 import React from "react";
+import PageWidget from "../../containers/pageWidget";
 import SettingPanel from "../../containers/panels/settingPanel";
 import NavigationPanel from "../../containers/panels/navigationPanel";
 import OperationPanel from "../../containers/panels/operationPanel";
 import { Toaster } from "react-hot-toast";
-import ProgressPanel from "../../containers/panels/htmlProgressPanel";
+import ProgressPanel from "../../containers/panels/progressPanel";
 import { ReaderProps, ReaderState } from "./interface";
 import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import ReadingTime from "../../utils/readUtils/readingTime";
@@ -11,12 +12,11 @@ import Viewer from "../../containers/htmlViewer";
 import _ from "underscore";
 import localforage from "localforage";
 import RecordLocation from "../../utils/readUtils/recordLocation";
+import "./index.css";
 
 class Reader extends React.Component<ReaderProps, ReaderState> {
   messageTimer!: NodeJS.Timeout;
   tickTimer!: NodeJS.Timeout;
-  rendition: any;
-
   constructor(props: ReaderProps) {
     super(props);
     this.state = {
@@ -27,10 +27,10 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
       hoverPanel: "",
       isOpenLeftPanel:
         StorageUtil.getReaderConfig("isNavLocked") === "yes" ? true : false,
-      rendition: null,
+
       scale: StorageUtil.getReaderConfig("scale") || 1,
       margin: parseInt(StorageUtil.getReaderConfig("margin")) || 30,
-      time: ReadingTime.getTime(this.props.currentBook.key),
+      time: 0,
       isTouch: StorageUtil.getReaderConfig("isTouch") === "yes",
       isPreventTrigger:
         StorageUtil.getReaderConfig("isPreventTrigger") === "yes",
@@ -43,8 +43,21 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
         .querySelector("body")
         ?.setAttribute("style", "background-color: rgba(0,0,0,0)");
     }
+
+    this.tickTimer = setInterval(() => {
+      if (this.state.time === 0 && this.props.currentBook.key) {
+        this.setState({
+          time: ReadingTime.getTime(this.props.currentBook.key),
+        });
+      } else if (this.state.time > 0) {
+        let time = this.state.time;
+        time += 1;
+        this.setState({ time });
+        ReadingTime.setTime(this.props.currentBook.key, time);
+      }
+    }, 1000);
   }
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     let url = document.location.href.split("/");
     let key = url[url.length - 1].split("?")[0];
     this.props.handleFetchBooks();
@@ -119,10 +132,20 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
         break;
     }
   };
+  handleLocation = async () => {
+    let position = await this.props.htmlBook.rendition.getPosition();
 
+    RecordLocation.recordHtmlLocation(
+      this.props.currentBook.key,
+      position.text,
+      position.chapterTitle,
+      position.count,
+      position.percentage,
+      position.cfi
+    );
+  };
   render() {
     const renditionProps = {
-      rendition: this.state.rendition,
       handleLeaveReader: this.handleLeaveReader,
       handleEnterReader: this.handleEnterReader,
       isShow:
@@ -139,15 +162,7 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
               className="previous-chapter-single-container"
               onClick={async () => {
                 this.props.htmlBook.rendition.prev();
-                let position = this.props.htmlBook.rendition.getPosition();
-
-                RecordLocation.recordHtmlLocation(
-                  this.props.currentBook.key,
-                  position.text,
-                  position.chapterTitle,
-                  position.count,
-                  position.percentage
-                );
+                await this.handleLocation();
               }}
             >
               <span className="icon-dropdown previous-chapter-single"></span>
@@ -156,14 +171,7 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
               className="next-chapter-single-container"
               onClick={async () => {
                 this.props.htmlBook.rendition.next();
-                let position = this.props.htmlBook.rendition.getPosition();
-                RecordLocation.recordHtmlLocation(
-                  this.props.currentBook.key,
-                  position.text,
-                  position.chapterTitle,
-                  position.count,
-                  position.percentage
-                );
+                await this.handleLocation();
               }}
             >
               <span className="icon-dropdown next-chapter-single"></span>
@@ -336,8 +344,11 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
                 }
           }
         >
-          <OperationPanel {...{ time: this.state.time }} />
+          {this.props.htmlBook && (
+            <OperationPanel {...{ time: this.state.time }} />
+          )}
         </div>
+        <PageWidget />
       </div>
     );
   }

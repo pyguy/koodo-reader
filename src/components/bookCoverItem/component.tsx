@@ -16,7 +16,6 @@ import toast from "react-hot-toast";
 declare var window: any;
 
 class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
-  epub: any;
   constructor(props: BookCoverProps) {
     super(props);
     this.state = {
@@ -111,8 +110,8 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
     }
   };
   render() {
-    let percentage = RecordLocation.getCfi(this.props.book.key)
-      ? RecordLocation.getCfi(this.props.book.key).percentage
+    let percentage = RecordLocation.getHtmlLocation(this.props.book.key)
+      ? RecordLocation.getHtmlLocation(this.props.book.key).percentage
       : 0;
     const actionProps = { left: this.state.left, top: this.state.top };
     return (
@@ -124,6 +123,7 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
           }}
           onMouseLeave={() => {
             this.handleConfig(false);
+            this.props.handleActionDialog(false);
           }}
           onContextMenu={(event) => {
             this.handleMoreAction(event);
@@ -175,19 +175,14 @@ class BookCoverItem extends React.Component<BookCoverProps, BookCoverState> {
               <Trans>Empty</Trans>
             )}
           </div>
-          {this.state.isFavorite && !this.props.isSelectBook ? (
-            <span
-              className="icon-love book-loved-icon"
-              onClick={() => {
-                this.handleCancelLoveBook();
-              }}
-              style={{ right: "274px", bottom: "25px" }}
-            ></span>
-          ) : null}
-          {this.props.isSelectBook && this.props.isSelected ? (
+          {this.props.isSelectBook ? (
             <span
               className="icon-message book-selected-icon"
-              style={{ right: "274px", bottom: "25px" }}
+              style={
+                this.props.isSelected
+                  ? { right: "274px", bottom: "25px" }
+                  : { right: "274px", bottom: "25px", color: "#eee" }
+              }
             ></span>
           ) : null}
           {this.state.isOpenConfig && !this.props.isSelectBook ? (

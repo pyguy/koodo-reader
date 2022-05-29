@@ -5,13 +5,11 @@ import BookmarkModel from "../../../model/Bookmark";
 import { RouteComponentProps } from "react-router";
 
 export interface OperationPanelProps extends RouteComponentProps<any> {
-  currentEpub: any;
   currentBook: BookModel;
   bookmarks: BookmarkModel[];
   notes: NoteModel[];
   books: BookModel[];
   htmlBook: HtmlBookModel;
-  flattenChapters: any;
   locations: any;
   rendition: any;
   time: number;
@@ -22,14 +20,12 @@ export interface OperationPanelProps extends RouteComponentProps<any> {
   handleOpenMenu: (isOpenMenu: boolean) => void;
   handleShowBookmark: (isShowBookmark: boolean) => void;
   handleReadingBook: (currentBook: BookModel | object) => void;
-  handleReadingEpub: (currentBook: object) => void;
 
   t: (title: string) => string;
   handleHtmlBook: (htmlBook: HtmlBookModel | null) => void;
 }
 
 export interface OperationPanelState {
-  isFullScreen: boolean;
   isBookmark: boolean;
   time: number;
   currentPercentage: number;

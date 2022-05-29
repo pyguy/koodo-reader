@@ -4,7 +4,7 @@ import ThemeList from "../../../components/readerSettings/themeList";
 import SliderList from "../../../components/readerSettings/sliderList";
 import DropdownList from "../../../components/readerSettings/dropdownList";
 import ModeControl from "../../../components/readerSettings/modeControl";
-import ReaderSwitch from "../../../components/readerSettings/settingSwitch";
+import SettingSwitch from "../../../components/readerSettings/settingSwitch";
 import { SettingPanelProps, SettingPanelState } from "./interface";
 import { Trans } from "react-i18next";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
@@ -77,7 +77,7 @@ class SettingPanel extends React.Component<
                 minValue: 0,
                 mode: "margin",
                 minLabel: "0",
-                maxLabel: "100",
+                maxLabel: "80",
                 step: 5,
                 title: "Margin",
               }}
@@ -117,7 +117,7 @@ class SettingPanel extends React.Component<
                 minLabel: "0.5",
                 maxLabel: "3",
                 step: 0.1,
-                title: "Scale",
+                title: "Page Width",
               }}
             />
           ) : null}
@@ -133,7 +133,7 @@ class SettingPanel extends React.Component<
             }}
           />
           <DropdownList />
-          <ReaderSwitch />
+          <SettingSwitch />
         </div>
       </div>
     );

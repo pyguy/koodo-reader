@@ -9,8 +9,8 @@ import BackToMain from "../../components/backToMain";
 import PopupMenu from "../../components/popups/popupMenu";
 import { Toaster } from "react-hot-toast";
 import { handleLinkJump } from "../../utils/readUtils/linkUtil";
+import { pdfMouseEvent } from "../../utils/serviceUtils/mouseEvent";
 class Viewer extends React.Component<ViewerProps, ViewerState> {
-  epub: any;
   constructor(props: ViewerProps) {
     super(props);
     this.state = {
@@ -24,7 +24,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       loading: true,
     };
   }
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.handleFetchBookmarks();
     this.props.handleFetchNotes();
     this.props.handleFetchBooks();
@@ -60,14 +60,15 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       let doc: any =
         iframe.contentWindow || iframe.contentDocument?.defaultView;
       this.setState({ loading: false });
+      pdfMouseEvent();
       doc.document.addEventListener("click", (event: any) => {
         event.preventDefault();
         handleLinkJump(event);
       });
+
       doc.document.addEventListener("mouseup", () => {
         if (!doc!.getSelection()) return;
         var rect = doc!.getSelection()!.getRangeAt(0).getBoundingClientRect();
-
         this.setState({
           rect,
           pageWidth: doc.document.body.scrollWidth,
@@ -80,7 +81,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
 
   render() {
     return (
-      <div className="ebook-viewer">
+      <div className="ebook-viewer" id="page-area">
         {!this.state.loading && (
           <PopupMenu
             {...{

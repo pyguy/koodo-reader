@@ -37,7 +37,7 @@ export const settingList = [
   },
   {
     isElectron: false,
-    title: "Default expand all content",
+    title: "Auto expand content",
     desc: "All the folded content will be expanded in the navigation panel",
     propName: "isExpandContent",
   },
@@ -75,9 +75,9 @@ export const settingList = [
     propName: "isPDFCover",
   },
   {
-    isElectron: false,
-    title: "Turn on night mode",
-    propName: "isDisplayDark",
+    isElectron: true,
+    title: "Open url with built-in browser",
+    propName: "isUseBuiltIn",
   },
 ];
 export const langList = [
@@ -85,6 +85,14 @@ export const langList = [
   { label: "繁體中文", value: "cht" },
   { label: "English", value: "en" },
   { label: "русский", value: "ru" },
+  { label: "Español", value: "es" },
+  { label: "Français", value: "fr" },
+  { label: "Português", value: "ptBR" },
+  { label: "فارسی", value: "fa" },
+  { label: "日本語", value: "jp" },
+  { label: "čeština", value: "cs" },
+  { label: "Deutsch", value: "de" },
+  { label: "한국인", value: "ko" },
 ];
 
 export const searchList = [
@@ -94,8 +102,14 @@ export const searchList = [
   { label: "DuckDuckGo", value: "duckduckgo" },
   { label: "Yandex", value: "yandex" },
   { label: "Yahoo", value: "yahoo" },
+  { label: "Naver", value: "naver" },
   { label: "Baidu Baike", value: "baike" },
   { label: "Wikipedia", value: "wiki" },
+];
+export const skinList = [
+  { label: "Light Mode", value: "light" },
+  { label: "Night Mode", value: "night" },
+  { label: "Follow OS", value: "system" },
 ];
 
 export const readerSettingList = [
@@ -108,7 +122,7 @@ export const readerSettingList = [
     propName: "isIndent",
   },
   {
-    title: "Bold Font",
+    title: "Bold",
     propName: "isBold",
   },
   {
@@ -116,11 +130,11 @@ export const readerSettingList = [
     propName: "isItalic",
   },
   {
-    title: "Text Underline",
+    title: "Text underline",
     propName: "isUnderline",
   },
   {
-    title: "Text Shadow",
+    title: "Text shadow",
     propName: "isShadow",
   },
   {
@@ -128,15 +142,15 @@ export const readerSettingList = [
     propName: "isInvert",
   },
   {
-    title: "Don't show footer",
+    title: "Hide footer",
     propName: "isHideFooter",
   },
   {
-    title: "Don't show header",
+    title: "Hide header",
     propName: "isHideHeader",
   },
   {
-    title: "Dont't use mimical background",
+    title: "Hide mimical background",
     propName: "isHideBackground",
   },
   {

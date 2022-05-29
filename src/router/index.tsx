@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { Route, Switch, HashRouter } from "react-router-dom";
 import Manager from "../pages/manager";
-import EpubReader from "../pages/epubPage";
 import HtmlReader from "../pages/htmlReader";
 import DjvuReader from "../pages/djvuReader";
 import PDFReader from "../pages/pdfReader";
@@ -22,8 +21,22 @@ const Router = () => {
         navigator.language === "zh-HK"
       ) {
         i18n.changeLanguage("cht");
-      } else if (navigator.language === "ru") {
+      } else if (navigator.language.startsWith("ru")) {
         i18n.changeLanguage("ru");
+      } else if (navigator.language.startsWith("jp")) {
+        i18n.changeLanguage("jp");
+      } else if (navigator.language.startsWith("fr")) {
+        i18n.changeLanguage("fr");
+      } else if (navigator.language.startsWith("es")) {
+        i18n.changeLanguage("es");
+      } else if (navigator.language.startsWith("pt")) {
+        i18n.changeLanguage("ptBR");
+      } else if (navigator.language.startsWith("fa")) {
+        i18n.changeLanguage("fa");
+      } else if (navigator.language.startsWith("cs")) {
+        i18n.changeLanguage("cs");
+      } else if (navigator.language.startsWith("de")) {
+        i18n.changeLanguage("de");
       } else {
         i18n.changeLanguage("en");
       }
@@ -33,8 +46,8 @@ const Router = () => {
     <HashRouter>
       <Switch>
         <Route component={Manager} path="/manager" />
-        <Route component={EpubReader} path="/epub" />
         <Route component={DjvuReader} path="/djvu" />
+        <Route component={HtmlReader} path="/epub" />
         <Route component={HtmlReader} path="/mobi" />
         <Route component={HtmlReader} path="/cbr" />
         <Route component={HtmlReader} path="/cbt" />

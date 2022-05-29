@@ -1,7 +1,6 @@
 export interface DropdownListProps {
-  currentEpub: any;
   t: (title: string) => string;
-  renderFunc: () => void;
+  renderBookFunc: () => void;
 }
 export interface DropdownListState {
   currentFontFamilyIndex: number;

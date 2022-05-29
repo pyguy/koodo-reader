@@ -2,11 +2,9 @@ import BookModel from "../../../model/Book";
 import NoteModel from "../../../model/Note";
 export interface PopupOptionProps {
   currentBook: BookModel;
-  currentEpub: any;
   selection: string;
   digests: NoteModel[];
   notes: NoteModel[];
-  flattenChapters: any;
   color: number;
   rect: DOMRect;
   cfiRange: string;

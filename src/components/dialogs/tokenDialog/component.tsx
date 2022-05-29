@@ -4,7 +4,7 @@ import { Trans } from "react-i18next";
 import { TokenDialogProps, TokenDialogState } from "./interface";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import toast from "react-hot-toast";
-import { isElectron } from "react-device-detect";
+import { openExternalUrl } from "../../../utils/serviceUtils/urlUtil";
 class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
   constructor(props: TokenDialogProps) {
     super(props);
@@ -44,16 +44,14 @@ class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
     toast.success(this.props.t("Add Successfully"));
   };
   handleJump = (url: string) => {
-    isElectron
-      ? window.require("electron").shell.openExternal(url)
-      : window.open(url);
+    openExternalUrl(url);
   };
   render() {
     return (
       <div className="token-dialog-container">
         <div className="token-dialog-box">
           <div className="token-dialog-title">
-            <Trans>Bind</Trans>
+            <Trans>Authorize</Trans>
             &nbsp;
             {this.props.driveName}&nbsp;
             <Trans>Token</Trans>
@@ -102,7 +100,10 @@ class TokenDialog extends Component<TokenDialogProps, TokenDialogState> {
                     : {}
                 }
               >
-                <Trans>Token Info</Trans>
+                <Trans>
+                  Please authorize your account, and fill the following box with
+                  the token
+                </Trans>
               </div>
               <div
                 className="token-dialog-link-text"

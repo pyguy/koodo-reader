@@ -1,17 +1,17 @@
 import BookModel from "../../model/Book";
+import HtmlBookModel from "../../model/HtmlBook";
 export interface BackgroundProps {
-  currentEpub: any;
   currentBook: BookModel;
-  flattenChapters: any;
   locations: any;
-  time: number;
-  handleFetchLocations: (currentEpub: any) => void;
+  currentChapter: string;
+  currentChapterIndex: number;
+  htmlBook: HtmlBookModel;
+  isShowBookmark: boolean;
 }
 export interface BackgroundState {
   isSingle: boolean;
   isHideFooter: boolean;
   isHideHeader: boolean;
-  currentChapter: string;
   prevPage: number;
   nextPage: number;
   scale: string;
